@@ -12,7 +12,7 @@ export function WhatsAppButton() {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Chat with us on WhatsApp"
-      className="fixed bottom-6 left-6 z-50 flex size-14 animate-bounce items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg transition-transform hover:scale-110 hover:animate-none focus-visible:animate-none focus-visible:outline-hidden focus-visible:ring-3 focus-visible:ring-[#25D366]/40"
+      className="fixed bottom-6 right-6 z-50 flex size-14 animate-vibrate items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg transition-transform hover:scale-110 hover:animate-none focus-visible:animate-none focus-visible:outline-hidden focus-visible:ring-3 focus-visible:ring-[#25D366]/40"
     >
       <span className="sr-only">Chat with us on WhatsApp</span>
       <svg
