@@ -3,7 +3,7 @@ import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 
 import { SectionHead } from "@/components/site/PageIntro";
-import { CLUB } from "@/lib/club-content";
+import { CLUB, SOCIAL_LINKS } from "@/lib/club-content";
 
 export const Route = createFileRoute("/contact")({
   head: () => ({
@@ -12,7 +12,7 @@ export const Route = createFileRoute("/contact")({
       {
         name: "description",
         content:
-          "Visit a weekly meeting at Sportsview Hotel, Athi River, or send the club a membership enquiry. Visitors always welcome.",
+          "Visit a weekly meeting at East African Portland Sports Club, Athi River, or send the club a membership enquiry. Visitors always welcome.",
       },
       { property: "og:title", content: "Contact & Visit Us | Rotary Club of Athi River" },
       {
@@ -75,13 +75,20 @@ function ContactPage() {
             </ul>
             <h5 className="mt-7 text-sm">Follow Us</h5>
             <div className="mt-3 flex gap-2">
-              {["f", "X", "in", "ig"].map((s) => (
+              {[
+                { label: "f", name: "Facebook", href: SOCIAL_LINKS.facebook },
+                { label: "X", name: "X (Twitter)", href: SOCIAL_LINKS.x },
+                { label: "ig", name: "Instagram", href: SOCIAL_LINKS.instagram },
+              ].map((s) => (
                 <a
-                  key={s}
-                  href="#"
+                  key={s.name}
+                  href={s.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={s.name}
                   className="flex size-9 items-center justify-center rounded-full bg-card text-sm font-bold text-navy shadow-[var(--shadow-card)] transition-colors hover:bg-primary hover:text-primary-foreground"
                 >
-                  {s}
+                  {s.label}
                 </a>
               ))}
             </div>
