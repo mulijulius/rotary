@@ -4,6 +4,7 @@ import { toast } from "sonner";
 
 import { SectionHead } from "@/components/site/PageIntro";
 import { CLUB, SOCIAL_LINKS } from "@/lib/club-content";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/contact")({
   head: () => ({
@@ -37,16 +38,35 @@ const details = [
 function ContactPage() {
   const [sending, setSending] = useState(false);
 
-  function onSubmit(e: FormEvent<HTMLFormElement>) {
+  async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const form = e.currentTarget;
+    const data = new FormData(form);
+
+    const name = String(data.get("name") ?? "").trim();
+    const email = String(data.get("email") ?? "").trim();
+    const phone = String(data.get("phone") ?? "").trim();
+    const subject = String(data.get("subject") ?? "").trim();
+    const message = String(data.get("message") ?? "").trim();
+
     setSending(true);
-    // Messages will be persisted to the contact_messages table once the
-    // club's Supabase project is connected.
-    setTimeout(() => {
-      setSending(false);
-      toast.success("Thanks — your message has been noted. The club secretary will be in touch.");
-      e.currentTarget?.reset?.();
-    }, 400);
+    const { error } = await supabase.from("contact_messages").insert({
+      name,
+      email,
+      phone: phone || null,
+      subject: subject || null,
+      message,
+    });
+    setSending(false);
+
+    if (error) {
+      console.error("[contact] failed to send message", error);
+      toast.error("Something went wrong sending your message. Please try again or email us directly.");
+      return;
+    }
+
+    toast.success("Thanks — your message has been sent. The club secretary will be in touch.");
+    form.reset();
   }
 
   return (
