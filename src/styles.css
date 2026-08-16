@@ -169,3 +169,15 @@
     transform: rotate(360deg);
   }
 }
+
+@utility animate-vibrate {
+  animation: vibrate 0.3s linear infinite;
+}
+
+@keyframes vibrate {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  20% { transform: translate(-1.5px, 1.5px) rotate(-2deg); }
+  40% { transform: translate(-1.5px, -1.5px) rotate(2deg); }
+  60% { transform: translate(1.5px, 1.5px) rotate(0deg); }
+  80% { transform: translate(1.5px, -1.5px) rotate(2deg); }
+}
