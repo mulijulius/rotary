@@ -2,11 +2,17 @@ export const CLUB = {
   name: "Rotary Club of Athi River",
   motto: "Service Above Self",
   district: "Rotary District 9212",
-  venue: "Sportsview Hotel, Athi River",
-  meeting: "Every Thursday, 12:30 PM – 2:00 PM",
-  email: "info@rotaryathiriver.org",
-  phone: "+254 700 000 000",
-  postal: "P.O. Box 000–00204, Athi River, Kenya",
+  venue: "East African Portland Sports Club, Athi River",
+  meeting: "Every Wednesday, 7:00 PM · Hybrid (Zoom & in-person)",
+  email: "rcathiriver@gmail.com",
+  phone: "+254 728 608 179",
+  postal: "P.O. Box 39221-00623, Parklands, Nairobi, Kenya",
+};
+
+export const SOCIAL_LINKS = {
+  facebook: "https://www.facebook.com/rotaryclubofathiriver",
+  x: "https://x.com/RCathiriver",
+  instagram: "https://www.instagram.com/rotaryclubofathiriver/",
 };
 
 export const heroStats = [
