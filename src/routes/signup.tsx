@@ -4,6 +4,7 @@ import { toast } from "sonner";
 
 import { SectionHead, AdminNote } from "@/components/site/PageIntro";
 import { supabase } from "@/integrations/supabase/client";
+import { roleLabel, type AppRole } from "@/lib/auth";
 
 export const Route = createFileRoute("/signup")({
   head: () => ({
@@ -11,6 +12,8 @@ export const Route = createFileRoute("/signup")({
   }),
   component: SignupPage,
 });
+
+const ROLE_OPTIONS: AppRole[] = ["member", "editor", "secretary", "treasurer", "admin"];
 
 function SignupPage() {
   const navigate = useNavigate();
@@ -22,6 +25,7 @@ function SignupPage() {
     const email = String(data.get("email") ?? "").trim();
     const password = String(data.get("password") ?? "");
     const confirm = String(data.get("confirm") ?? "");
+    const requestedRole = String(data.get("role") ?? "member") as AppRole;
 
     if (password !== confirm) {
       toast.error("Passwords don't match.");
@@ -29,7 +33,14 @@ function SignupPage() {
     }
 
     setSubmitting(true);
-    const { data: signUpData, error } = await supabase.auth.signUp({ email, password });
+    // The requested role travels as auth user metadata so a pending role
+    // request gets created (via a DB trigger) even if email confirmation
+    // means there's no usable session yet to insert a row ourselves.
+    const { data: signUpData, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { requested_role: requestedRole } },
+    });
     setSubmitting(false);
 
     if (error) {
@@ -37,10 +48,11 @@ function SignupPage() {
       return;
     }
 
-    // A new account has no role in user_roles yet — an existing admin has to
-    // grant one (see AdminNote below) before this account can access /admin.
+    // Signing up does not grant access by itself — it only creates a
+    // pending request. An existing admin has to approve it (see AdminNote
+    // below) before this account can reach its dashboard.
     if (signUpData.session) {
-      toast.success("Account created. An admin still needs to grant you a role.");
+      toast.success(`Account created. Your request for ${roleLabel(requestedRole)} is pending admin approval.`);
       navigate({ to: "/admin" });
     } else {
       toast.success("Account created — check your email to confirm it, then sign in.");
@@ -54,7 +66,7 @@ function SignupPage() {
         <SectionHead
           eyebrow="Back Office"
           title="Create an officer account"
-          copy="Signing up does not grant access by itself — an admin must assign you a role."
+          copy="Pick the role you're requesting — an admin still has to approve it before it grants access."
         />
 
         <form
@@ -97,6 +109,23 @@ function SignupPage() {
               className="w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm outline-hidden focus:border-primary focus:ring-3 focus:ring-ring/20"
             />
           </label>
+          <label className="mt-4 block">
+            <span className="mb-1.5 block text-sm font-semibold text-foreground">
+              Role you're requesting
+            </span>
+            <select
+              name="role"
+              defaultValue="member"
+              required
+              className="w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm outline-hidden focus:border-primary focus:ring-3 focus:ring-ring/20"
+            >
+              {ROLE_OPTIONS.map((r) => (
+                <option key={r} value={r}>
+                  {roleLabel(r)}
+                </option>
+              ))}
+            </select>
+          </label>
           <button
             type="submit"
             disabled={submitting}
@@ -113,11 +142,11 @@ function SignupPage() {
         </form>
 
         <AdminNote>
-          New accounts start with no permissions. An existing admin must open{" "}
+          Signing up only files a request — it does not grant access. An existing admin must open{" "}
           <Link to="/admin/users" className="font-semibold underline">
             Admin → Users
           </Link>{" "}
-          and assign a role before this account can access the back office.
+          and approve it before this account can reach its dashboard.
         </AdminNote>
       </div>
     </section>
