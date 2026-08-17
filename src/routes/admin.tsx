@@ -1,179 +1,207 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, X, LogOut } from "lucide-react";
 import { toast } from "sonner";
 
 import { RotaryWheel } from "@/components/site/RotaryWheel";
-import { CLUB } from "@/lib/club-content";
-import { isOfficerRole, roleLabel, useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth, roleLabel, type AppRole } from "@/lib/auth";
 
 export const Route = createFileRoute("/admin")({
-  head: () => ({
-    meta: [{ title: "Admin | Rotary Club of Athi River" }],
-  }),
   component: AdminLayout,
 });
 
-// NOTE ON THIS GUARD: Supabase sessions here are stored client-side only
-// (see src/integrations/supabase/client.ts — localStorage, no session cookie),
-// so there is nothing for a server-side beforeLoad to check on the first
-// request. The guard below runs client-side after hydration instead, and
-// renders nothing (no protected content, no layout chrome) until the auth
-// check resolves — this avoids flashing admin content to a logged-out
-// visitor, at the cost of a brief blank screen on first load. Moving this to
-// a real beforeLoad-based guard would require server-side session cookies
-// (see the auth-server-primitives pattern) rather than localStorage-only auth.
-const adminLinks = [
-  { to: "/admin", label: "Overview", exact: true },
-  { to: "/admin/messages", label: "Contact Messages", exact: false },
-  { to: "/admin/members", label: "Members", exact: false },
-  { to: "/admin/users", label: "Users & Roles", exact: false },
-] as const;
+type NavItem = { to: string; label: string };
+
+// What each role sees in the Back Office side nav. Everyone gets Overview;
+// beyond that, nav mirrors what the row-level security policies already
+// grant that role, so nothing here is a false promise.
+const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
+  admin: [
+    { to: "/admin", label: "Overview" },
+    { to: "/admin/members", label: "Members" },
+    { to: "/admin/messages", label: "Messages" },
+    { to: "/admin/users", label: "Users & Roles" },
+  ],
+  treasurer: [
+    { to: "/admin", label: "Overview" },
+    { to: "/admin/members", label: "Members" },
+    { to: "/admin/messages", label: "Messages" },
+  ],
+  secretary: [
+    { to: "/admin", label: "Overview" },
+    { to: "/admin/members", label: "Members" },
+    { to: "/admin/messages", label: "Messages" },
+  ],
+  editor: [
+    { to: "/admin", label: "Overview" },
+    { to: "/admin/messages", label: "Messages" },
+  ],
+  member: [{ to: "/admin", label: "Overview" }],
+};
 
 function AdminLayout() {
-  const { loading, session, role } = useAuth();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const { loading, session, role, roleStatus, requestedRole } = useAuth();
+  const [navOpen, setNavOpen] = useState(false);
 
   useEffect(() => {
-    if (loading) return;
-    if (!session) {
+    if (!loading && !session) {
       navigate({ to: "/login" });
-      return;
     }
-    if (!isOfficerRole(role)) {
-      toast.error(
-        "Your account doesn't have an assigned role yet. Ask an admin to grant you access.",
-      );
-      navigate({ to: "/" });
-    }
-  }, [loading, session, role, navigate]);
+  }, [loading, session, navigate]);
 
-  if (loading || !session || !isOfficerRole(role)) {
-    // Blank on purpose — see NOTE above. Avoids showing admin chrome/content
-    // before we know whether this visitor is actually allowed to see it.
-    return <div className="min-h-screen bg-background" />;
-  }
-
-  async function handleSignOut() {
+  async function signOut() {
     await supabase.auth.signOut();
+    toast.success("Signed out.");
     navigate({ to: "/login" });
   }
 
-  const visibleLinks = adminLinks.filter((l) => l.to !== "/admin/users" || role === "admin");
+  if (loading || !session) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      </div>
+    );
+  }
+
+  if (roleStatus === "pending") {
+    return (
+      <StatusScreen
+        title="Request pending"
+        body={`Your request for the ${requestedRole ? roleLabel(requestedRole) : ""} role is waiting on an admin to approve it. Check back soon, or reach out to a club officer.`}
+        onSignOut={signOut}
+      />
+    );
+  }
+
+  if (roleStatus === "revoked" || roleStatus === null || !role) {
+    return (
+      <StatusScreen
+        title={roleStatus === "revoked" ? "Access revoked" : "No role on file"}
+        body={
+          roleStatus === "revoked"
+            ? "An admin has revoked your back-office access. Contact a club officer if you believe this is a mistake."
+            : "This account hasn't requested a role yet. Sign up again to request one, or contact a club officer."
+        }
+        onSignOut={signOut}
+        showSignupLink={roleStatus === null}
+      />
+    );
+  }
+
+  const navItems = NAV_BY_ROLE[role];
 
   return (
-    <div className="flex min-h-screen flex-col bg-muted/30 md:flex-row">
-      {/* Mobile top bar — the sidebar below is md:flex only, so this is the
-          entire nav on small screens (hamburger toggles the panel beneath it). */}
-      <header className="flex items-center justify-between border-b border-border bg-card px-4 py-3 md:hidden">
-        <div className="flex items-center gap-2.5">
-          <RotaryWheel size={26} />
-          <span className="text-[13px] font-bold text-navy">Back Office</span>
-        </div>
-        <button
-          type="button"
-          aria-label="Toggle admin navigation"
-          onClick={() => setMobileNavOpen((v) => !v)}
-          className="rounded-md p-2 text-navy"
-        >
-          {mobileNavOpen ? <X size={22} /> : <Menu size={22} />}
-        </button>
-      </header>
-
-      {mobileNavOpen ? (
-        <nav className="border-b border-border bg-card px-3 py-2 md:hidden">
-          {visibleLinks.map((l) => {
-            const active = l.exact ? pathname === l.to : pathname.startsWith(l.to);
-            return (
-              <Link
-                key={l.to}
-                to={l.to}
-                onClick={() => setMobileNavOpen(false)}
-                className={`block rounded-lg px-3.5 py-2.5 text-sm font-semibold ${
-                  active ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-muted"
-                }`}
-              >
-                {l.label}
-              </Link>
-            );
-          })}
-          <div className="mt-2 border-t border-border pt-2">
-            <p className="px-3.5 pb-2 text-xs text-muted-foreground">
-              Signed in as{" "}
-              <span className="font-semibold text-foreground">{session.user.email}</span>
-              {role ? ` · ${roleLabel(role)}` : ""}
-            </p>
+    <div className="min-h-screen bg-muted/30">
+      <div className="border-b border-border bg-card">
+        <div className="mx-auto flex max-w-[1180px] items-center justify-between gap-4 px-6 py-3">
+          <div className="flex items-center gap-3">
+            <RotaryWheel size={32} />
+            <div>
+              <p className="text-[15px] font-bold text-navy">Back Office</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-gold-deep">
+                {roleLabel(role)}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
             <button
-              onClick={handleSignOut}
-              className="w-full rounded-lg px-3.5 py-2.5 text-left text-sm font-semibold text-muted-foreground hover:bg-muted"
+              type="button"
+              onClick={signOut}
+              className="hidden items-center gap-1.5 rounded-full border border-input px-3.5 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted sm:inline-flex"
             >
-              Sign out
+              <LogOut size={14} /> Sign out
             </button>
-            <Link
-              to="/"
-              onClick={() => setMobileNavOpen(false)}
-              className="mt-1 block w-full rounded-lg px-3.5 py-2.5 text-left text-sm font-semibold text-muted-foreground hover:bg-muted"
+            <button
+              type="button"
+              aria-label="Toggle back office navigation"
+              onClick={() => setNavOpen((v) => !v)}
+              className="rounded-md p-2 text-navy lg:hidden"
             >
-              ← Back to site
-            </Link>
-          </div>
-        </nav>
-      ) : null}
-
-      <aside className="hidden w-64 flex-none flex-col border-r border-border bg-card md:flex">
-        <div className="flex items-center gap-2.5 border-b border-border px-5 py-4">
-          <RotaryWheel size={30} />
-          <div className="leading-tight">
-            <p className="text-[13px] font-bold text-navy">{CLUB.name}</p>
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-gold-deep">
-              Back Office
-            </p>
+              {navOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
           </div>
         </div>
-        <nav className="flex flex-col gap-1 p-3">
-          {visibleLinks.map((l) => {
-            const active = l.exact ? pathname === l.to : pathname.startsWith(l.to);
-            return (
-              <Link
-                key={l.to}
-                to={l.to}
-                className={`rounded-lg px-3.5 py-2.5 text-sm font-semibold transition-colors ${
-                  active
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                }`}
+      </div>
+
+      <div className="mx-auto flex max-w-[1180px] gap-8 px-6 py-8">
+        <nav className={`${navOpen ? "block" : "hidden"} w-full shrink-0 lg:block lg:w-56`}>
+          <ul className="space-y-1">
+            {navItems.map((item) => {
+              const active = pathname === item.to || pathname === `${item.to}/`;
+              return (
+                <li key={item.to}>
+                  <Link
+                    to={item.to}
+                    onClick={() => setNavOpen(false)}
+                    className={`block rounded-lg px-3.5 py-2.5 text-sm font-semibold transition-colors ${
+                      active
+                        ? "bg-primary text-primary-foreground"
+                        : "text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              );
+            })}
+            <li className="pt-2 sm:hidden">
+              <button
+                type="button"
+                onClick={signOut}
+                className="flex w-full items-center gap-1.5 rounded-lg px-3.5 py-2.5 text-sm font-semibold text-muted-foreground hover:bg-muted"
               >
-                {l.label}
-              </Link>
-            );
-          })}
+                <LogOut size={14} /> Sign out
+              </button>
+            </li>
+          </ul>
         </nav>
-        <div className="mt-auto border-t border-border p-3">
-          <p className="px-3.5 pb-2 text-xs text-muted-foreground">
-            Signed in as <span className="font-semibold text-foreground">{session.user.email}</span>
-            {role ? ` · ${roleLabel(role)}` : ""}
-          </p>
+
+        <main className="min-w-0 flex-1">
+          <Outlet />
+        </main>
+      </div>
+    </div>
+  );
+}
+
+function StatusScreen({
+  title,
+  body,
+  onSignOut,
+  showSignupLink = false,
+}: {
+  title: string;
+  body: string;
+  onSignOut: () => void;
+  showSignupLink?: boolean;
+}) {
+  return (
+    <div className="flex min-h-[70vh] items-center justify-center px-6">
+      <div className="max-w-md rounded-2xl border border-border bg-card p-8 text-center shadow-[var(--shadow-card)]">
+        <RotaryWheel size={36} className="mx-auto" />
+        <h1 className="mt-4 text-xl font-bold text-foreground">{title}</h1>
+        <p className="mt-2 text-sm text-muted-foreground">{body}</p>
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+          {showSignupLink && (
+            <Link
+              to="/signup"
+              className="rounded-full bg-gold px-5 py-2.5 text-sm font-bold text-navy transition-colors hover:bg-gold-deep"
+            >
+              Request a role
+            </Link>
+          )}
           <button
-            onClick={handleSignOut}
-            className="w-full rounded-lg px-3.5 py-2.5 text-left text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            type="button"
+            onClick={onSignOut}
+            className="rounded-full border border-input px-5 py-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted"
           >
             Sign out
           </button>
-          <Link
-            to="/"
-            className="mt-1 block w-full rounded-lg px-3.5 py-2.5 text-left text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          >
-            ← Back to site
-          </Link>
         </div>
-      </aside>
-
-      <main className="min-w-0 flex-1 p-6 md:p-10">
-        <Outlet />
-      </main>
+      </div>
     </div>
   );
 }
