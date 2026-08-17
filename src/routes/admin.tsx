@@ -22,6 +22,7 @@ const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
     { to: "/admin/members", label: "Members" },
     { to: "/admin/messages", label: "Messages" },
     { to: "/admin/users", label: "Users & Roles" },
+    { to: "/admin/audit", label: "Role Audit Trail" },
   ],
   treasurer: [
     { to: "/admin", label: "Overview" },
