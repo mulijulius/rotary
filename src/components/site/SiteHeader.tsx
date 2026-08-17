@@ -42,7 +42,9 @@ export function SiteHeader() {
                   to={l.to}
                   activeOptions={{ exact: l.to === "/" }}
                   activeProps={{ className: "bg-primary text-primary-foreground" }}
-                  inactiveProps={{ className: "text-muted-foreground hover:bg-muted hover:text-primary" }}
+                  inactiveProps={{
+                    className: "text-muted-foreground hover:bg-muted hover:text-primary",
+                  }}
                   className="rounded-full px-4 py-2.5 text-[14.5px] font-semibold transition-colors"
                 >
                   {l.label}
@@ -53,6 +55,12 @@ export function SiteHeader() {
         </nav>
 
         <div className="flex items-center gap-2">
+          <Link
+            to="/login"
+            className="hidden text-[13px] font-semibold text-muted-foreground transition-colors hover:text-primary sm:inline-flex"
+          >
+            Officer Login
+          </Link>
           <Link
             to="/contact"
             className="hidden rounded-full bg-primary px-5 py-2.5 text-[13.5px] font-semibold text-primary-foreground transition-colors hover:bg-royal sm:inline-flex"
@@ -87,6 +95,15 @@ export function SiteHeader() {
                 </Link>
               </li>
             ))}
+            <li className="mt-2 border-t border-border pt-2">
+              <Link
+                to="/login"
+                onClick={() => setOpen(false)}
+                className="block rounded-lg px-3 py-3 text-sm font-semibold text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                Officer Login
+              </Link>
+            </li>
           </ul>
         </nav>
       ) : null}
