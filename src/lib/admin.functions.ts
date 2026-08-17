@@ -16,9 +16,10 @@ async function assertCallerIsAdmin(
     .select("role")
     .eq("user_id", userId)
     .eq("role", "admin")
+    .eq("status", "approved")
     .maybeSingle();
   if (error) throw new Error("Failed to verify admin access.");
-  if (!data) throw new Error("Forbidden: this action requires the admin role.");
+  if (!data) throw new Error("Forbidden: this action requires an approved admin role.");
 }
 
 // auth.users isn't exposed through the normal PostgREST API (only tables in
