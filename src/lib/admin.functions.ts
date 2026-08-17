@@ -43,3 +43,18 @@ export const listAuthUsers = createServerFn({ method: "GET" })
       }))
       .sort((a, b) => a.email.localeCompare(b.email));
   });
+
+// Admin-only: reissue a member's QR check-in token. Wraps
+// fn_reissue_qr_token (SECURITY DEFINER, checked server-side by role) so
+// the call still goes through the user's own authenticated session rather
+// than the service-role client — the DB function is the actual gate.
+export const reissueQrToken = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((memberId: number) => memberId)
+  .handler(async ({ data: memberId, context }) => {
+    const { data, error } = await context.supabase.rpc("fn_reissue_qr_token", {
+      _member_id: memberId,
+    });
+    if (error) throw new Error(error.message);
+    return { qrToken: data as string };
+  });
