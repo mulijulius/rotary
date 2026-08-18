@@ -1,24 +1,41 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Scan, MapPin, Calendar, Clock, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
+import jsQR from "jsqr";
 
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 
 export const Route = createFileRoute("/attendance/check-in")({
   component: AttendanceCheckIn,
+  head: () => ({
+    meta: [
+      { title: "Meeting Check-In | Rotary Club" },
+      {
+        name: "description",
+        content:
+          "Scan your Rotary member QR code to record attendance at today's club meeting.",
+      },
+      { property: "og:title", content: "Meeting Check-In | Rotary Club" },
+      {
+        property: "og:description",
+        content: "Scan your member QR code to record meeting attendance.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
 });
 
 type Member = Database["public"]["Tables"]["members"]["Row"];
 type Meeting = Database["public"]["Tables"]["meetings"]["Row"];
-type Attendance = Database["public"]["Tables"]["attendance"]["Row"];
 
 function AttendanceCheckIn() {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
   const [scannedMember, setScannedMember] = useState<Member | null>(null);
@@ -26,6 +43,11 @@ function AttendanceCheckIn() {
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const rafRef = useRef<number | null>(null);
+  // Guards against the decode loop firing the same token dozens of times a
+  // second while the code stays in frame.
+  const inFlightRef = useRef(false);
+  const lastTokenRef = useRef<string | null>(null);
 
   useEffect(() => {
     loadMeetings();
@@ -39,6 +61,7 @@ function AttendanceCheckIn() {
     }
     return () => stopCamera();
   }, [isScanning, selectedMeeting]);
+
 
   async function loadMeetings() {
     const { data, error } = await supabase
