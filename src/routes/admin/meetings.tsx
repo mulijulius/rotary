@@ -290,7 +290,7 @@ function AdminMeetings() {
                   <Label htmlFor="venue">Venue</Label>
                   <Input
                     id="venue"
-                    value={formData.venue}
+                    value={formData.venue ?? ""}
                     onChange={(e) => setFormData({ ...formData, venue: e.target.value })}
                     placeholder="Hotel Name, Conference Room"
                   />
@@ -299,7 +299,7 @@ function AdminMeetings() {
                   <Label htmlFor="description">Description</Label>
                   <Textarea
                     id="description"
-                    value={formData.description}
+                    value={formData.description ?? ""}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     placeholder="Meeting details, agenda, etc."
                     rows={2}

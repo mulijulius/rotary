@@ -297,7 +297,7 @@ function AdminMembers() {
                     <Label htmlFor="classification">Classification</Label>
                     <Input
                       id="classification"
-                      value={formData.classification}
+                      value={formData.classification ?? ""}
                       onChange={(e) => setFormData({ ...formData, classification: e.target.value })}
                       placeholder="Vocational / Professional"
                     />

@@ -400,7 +400,7 @@ function AdminInventory() {
                   <Label htmlFor="location">Location *</Label>
                   <Input
                     id="location"
-                    value={formData.location}
+                    value={formData.location ?? ""}
                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                     placeholder="Room/Building"
                   />
@@ -420,7 +420,7 @@ function AdminInventory() {
                   <Label htmlFor="unit">Unit</Label>
                   <Input
                     id="unit"
-                    value={formData.unit_of_measure}
+                    value={formData.unit_of_measure ?? ""}
                     onChange={(e) => setFormData({ ...formData, unit_of_measure: e.target.value })}
                     placeholder="unit"
                   />
