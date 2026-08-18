@@ -55,7 +55,7 @@ function AttendanceCheckIn() {
     }
     setMeetings(data);
     if (data.length > 0) {
-      setSelectedMeeting(data[0]);
+      setSelectedMeeting(data[0]!);
     }
   }
 

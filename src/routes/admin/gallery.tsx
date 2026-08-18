@@ -75,7 +75,7 @@ function AdminGallery() {
       setEditingAlbum(null);
       setFormData({
         title: "",
-        event_date: new Date().toISOString().split("T")[0],
+        event_date: new Date().toISOString().slice(0, 10),
         cover_image_url: "",
         published: true,
       });

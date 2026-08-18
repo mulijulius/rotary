@@ -54,7 +54,7 @@ function AdminMeetings() {
   const [formData, setFormData] = useState<MeetingFormData>({
     title: "",
     meeting_type: "weekly",
-    meeting_date: new Date().toISOString().split("T")[0],
+    meeting_date: new Date().toISOString().slice(0, 10),
     start_time: "12:00",
     end_time: "13:00",
     venue: "",
@@ -90,7 +90,7 @@ function AdminMeetings() {
       setFormData({
         title: meeting.title,
         meeting_type: meeting.meeting_type,
-        meeting_date: new Date(meeting.meeting_date).toISOString().split("T")[0],
+        meeting_date: new Date(meeting.meeting_date).toISOString().slice(0, 10),
         start_time: meeting.start_time,
         end_time: meeting.end_time || "",
         venue: meeting.venue || "",
@@ -106,7 +106,7 @@ function AdminMeetings() {
       setFormData({
         title: "",
         meeting_type: "weekly",
-        meeting_date: new Date().toISOString().split("T")[0],
+        meeting_date: new Date().toISOString().slice(0, 10),
         start_time: "12:00",
         end_time: "13:00",
         venue: "",

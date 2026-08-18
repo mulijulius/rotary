@@ -65,7 +65,7 @@ function AdminMembers() {
     phone: "",
     classification: "",
     photo_url: null,
-    joined_date: new Date().toISOString().split("T")[0],
+    joined_date: new Date().toISOString().slice(0, 10),
     status: "active",
   });
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -100,7 +100,7 @@ function AdminMembers() {
         phone: member.phone,
         classification: member.classification || "",
         photo_url: member.photo_url,
-        joined_date: new Date(member.joined_date).toISOString().split("T")[0],
+        joined_date: new Date(member.joined_date).toISOString().slice(0, 10),
         status: member.status,
       });
     } else {
@@ -114,7 +114,7 @@ function AdminMembers() {
         phone: "",
         classification: "",
         photo_url: null,
-        joined_date: new Date().toISOString().split("T")[0],
+        joined_date: new Date().toISOString().slice(0, 10),
         status: "active",
       });
     }

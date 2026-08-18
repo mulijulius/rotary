@@ -45,7 +45,7 @@ export async function decideLeaveRequest(requestId: number, approve: boolean, no
   const { error } = await supabase.rpc("fn_decide_leave_request", {
     _request_id: requestId,
     _approve: approve,
-    _note: note ?? null,
+    _note: note ?? "",
   });
   if (error) throw error;
 }
@@ -56,7 +56,7 @@ export async function decideProfileEditRequest(requestId: number, approve: boole
   const { error } = await supabase.rpc("fn_decide_profile_edit_request", {
     _request_id: requestId,
     _approve: approve,
-    _note: note ?? null,
+    _note: note ?? "",
   });
   if (error) throw error;
 }

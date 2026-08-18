@@ -19,7 +19,7 @@ function AdminOverview() {
     let cancelled = false;
 
     async function load() {
-      const next = await loadCardsForRole(role);
+      const next = await loadCardsForRole(role!);
       if (!cancelled) setCards(next);
     }
 
