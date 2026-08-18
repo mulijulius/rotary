@@ -207,11 +207,11 @@ SELECT
   fy.name AS fiscal_year_name,
   fy.start_date,
   fy.end_date,
-  SUM(CASE WHEN acc.type = 'income' THEN ABS(COALESCE(balance, 0)) ELSE 0 END) AS total_income,
-  SUM(CASE WHEN acc.type = 'expense' THEN ABS(COALESCE(balance, 0)) ELSE 0 END) AS total_expenses,
-  SUM(CASE WHEN acc.type = 'asset' THEN COALESCE(balance, 0) ELSE 0 END) AS total_assets,
-  SUM(CASE WHEN acc.type = 'liability' THEN COALESCE(balance, 0) ELSE 0 END) AS total_liabilities,
-  SUM(CASE WHEN acc.type = 'equity' THEN COALESCE(balance, 0) ELSE 0 END) AS total_equity
+  SUM(CASE WHEN acc.type = 'income' THEN ABS(COALESCE(acc.balance, 0)) ELSE 0 END) AS total_income,
+  SUM(CASE WHEN acc.type = 'expense' THEN ABS(COALESCE(acc.balance, 0)) ELSE 0 END) AS total_expenses,
+  SUM(CASE WHEN acc.type = 'asset' THEN COALESCE(acc.balance, 0) ELSE 0 END) AS total_assets,
+  SUM(CASE WHEN acc.type = 'liability' THEN COALESCE(acc.balance, 0) ELSE 0 END) AS total_liabilities,
+  SUM(CASE WHEN acc.type = 'equity' THEN COALESCE(acc.balance, 0) ELSE 0 END) AS total_equity
 FROM public.fiscal_years fy
 LEFT JOIN v_income_statement ON v_income_statement.fiscal_year_id = fy.id
 LEFT JOIN v_balance_sheet ON v_balance_sheet.fiscal_year_id = fy.id
