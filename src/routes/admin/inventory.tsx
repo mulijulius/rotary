@@ -87,7 +87,7 @@ function AdminInventory() {
     unit_cost: 0,
     status: "active",
     location: "",
-    purchase_date: new Date().toISOString().split("T")[0],
+    purchase_date: new Date().toISOString().slice(0, 10),
     warranty_expiry: null,
     responsible_member_id: null,
     depreciation_account_id: null,
@@ -149,7 +149,7 @@ function AdminInventory() {
         unit_cost: 0,
         status: "active",
         location: "",
-        purchase_date: new Date().toISOString().split("T")[0],
+        purchase_date: new Date().toISOString().slice(0, 10),
         warranty_expiry: null,
         responsible_member_id: null,
         depreciation_account_id: null,
@@ -255,7 +255,7 @@ function AdminInventory() {
           to_location: movementData.to_location,
           notes: movementData.notes,
           recorded_by: 1, // Would be actual user ID in production
-          movement_date: new Date().toISOString().split("T")[0],
+          movement_date: new Date().toISOString().slice(0, 10),
         });
 
       if (movementError) throw movementError;
@@ -286,7 +286,7 @@ function AdminInventory() {
     }
   }
 
-  async function handleDeleteItem(id: bigint) {
+  async function handleDeleteItem(id: number) {
     if (!confirm("Are you sure you want to delete this item?")) return;
     try {
       const { error } = await supabase.from("inventory_items").delete().eq("id", id);
@@ -400,7 +400,7 @@ function AdminInventory() {
                   <Label htmlFor="location">Location *</Label>
                   <Input
                     id="location"
-                    value={formData.location}
+                    value={formData.location ?? ""}
                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                     placeholder="Room/Building"
                   />
@@ -420,7 +420,7 @@ function AdminInventory() {
                   <Label htmlFor="unit">Unit</Label>
                   <Input
                     id="unit"
-                    value={formData.unit_of_measure}
+                    value={formData.unit_of_measure ?? ""}
                     onChange={(e) => setFormData({ ...formData, unit_of_measure: e.target.value })}
                     placeholder="unit"
                   />

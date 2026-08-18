@@ -1,24 +1,41 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Scan, MapPin, Calendar, Clock, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
+import jsQR from "jsqr";
 
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 
 export const Route = createFileRoute("/attendance/check-in")({
   component: AttendanceCheckIn,
+  head: () => ({
+    meta: [
+      { title: "Meeting Check-In | Rotary Club" },
+      {
+        name: "description",
+        content:
+          "Scan your Rotary member QR code to record attendance at today's club meeting.",
+      },
+      { property: "og:title", content: "Meeting Check-In | Rotary Club" },
+      {
+        property: "og:description",
+        content: "Scan your member QR code to record meeting attendance.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
 });
 
 type Member = Database["public"]["Tables"]["members"]["Row"];
 type Meeting = Database["public"]["Tables"]["meetings"]["Row"];
-type Attendance = Database["public"]["Tables"]["attendance"]["Row"];
 
 function AttendanceCheckIn() {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
   const [scannedMember, setScannedMember] = useState<Member | null>(null);
@@ -26,6 +43,11 @@ function AttendanceCheckIn() {
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const rafRef = useRef<number | null>(null);
+  // Guards against the decode loop firing the same token dozens of times a
+  // second while the code stays in frame.
+  const inFlightRef = useRef(false);
+  const lastTokenRef = useRef<string | null>(null);
 
   useEffect(() => {
     loadMeetings();
@@ -39,6 +61,7 @@ function AttendanceCheckIn() {
     }
     return () => stopCamera();
   }, [isScanning, selectedMeeting]);
+
 
   async function loadMeetings() {
     const { data, error } = await supabase
@@ -55,7 +78,7 @@ function AttendanceCheckIn() {
     }
     setMeetings(data);
     if (data.length > 0) {
-      setSelectedMeeting(data[0]);
+      setSelectedMeeting(data[0]!);
     }
   }
 
@@ -67,20 +90,67 @@ function AttendanceCheckIn() {
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        await videoRef.current.play().catch(() => undefined);
       }
       setError(null);
+      startDecodeLoop();
     } catch (err: any) {
       setError("Unable to access camera. Please check permissions.");
       console.error("Camera error:", err);
     }
   }
 
+  // Grabs frames off the live video into an offscreen canvas and hands the
+  // pixels to jsQR. Runs on requestAnimationFrame so it stops with the tab.
+  function startDecodeLoop() {
+    if (!canvasRef.current) canvasRef.current = document.createElement("canvas");
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+    const tick = () => {
+      const video = videoRef.current;
+      if (!video || !ctx || video.readyState !== video.HAVE_ENOUGH_DATA) {
+        rafRef.current = requestAnimationFrame(tick);
+        return;
+      }
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const result = jsQR(image.data, image.width, image.height, {
+        inversionAttempts: "dontInvert",
+      });
+
+      const token = result?.data?.trim();
+      if (token && token !== lastTokenRef.current && !inFlightRef.current) {
+        lastTokenRef.current = token;
+        inFlightRef.current = true;
+        void handleQRCodeScanned(token).finally(() => {
+          inFlightRef.current = false;
+          // Allow the same badge again after the success card clears.
+          setTimeout(() => {
+            lastTokenRef.current = null;
+          }, 3000);
+        });
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+
+    rafRef.current = requestAnimationFrame(tick);
+  }
+
   function stopCamera() {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    lastTokenRef.current = null;
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
   }
+
 
   async function handleQRCodeScanned(qrToken: string) {
     if (!selectedMeeting) {

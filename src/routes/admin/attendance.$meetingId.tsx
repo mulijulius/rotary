@@ -48,9 +48,9 @@ function AdminAttendance() {
   const { meetingId } = useParams({ from: "/admin/attendance/$meetingId" });
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [members, setMembers] = useState<Member[] | null>(null);
-  const [attendance, setAttendance] = useState<Map<bigint, Attendance>>(new Map());
+  const [attendance, setAttendance] = useState<Map<number, Attendance>>(new Map());
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [notes, setNotes] = useState<Map<bigint, string>>(new Map());
+  const [notes, setNotes] = useState<Map<number, string>>(new Map());
 
   const meetingIdNum = parseInt(meetingId);
 
@@ -91,7 +91,7 @@ function AdminAttendance() {
     }
   }
 
-  async function handleStatusChange(memberId: bigint, status: AttendanceStatus) {
+  async function handleStatusChange(memberId: number, status: AttendanceStatus) {
     setBusyId(memberId.toString());
     try {
       const existing = attendance.get(memberId);
@@ -121,7 +121,7 @@ function AdminAttendance() {
     }
   }
 
-  async function handleNoteChange(memberId: bigint, note: string) {
+  async function handleNoteChange(memberId: number, note: string) {
     setBusyId(memberId.toString());
     try {
       const existing = attendance.get(memberId);
@@ -198,7 +198,6 @@ function AdminAttendance() {
                   </TableCell>
                   <TableCell>
                     <Input
-                      size="sm"
                       type="text"
                       placeholder="Add note…"
                       value={notes.get(m.id) || att?.notes || ""}

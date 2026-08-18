@@ -79,7 +79,7 @@ function AdminBoardPositions() {
     }
     setYears(data);
     if (data.length > 0) {
-      setSelectedYear(data[0].id.toString());
+      setSelectedYear(data[0]!.id.toString());
     }
   }
 

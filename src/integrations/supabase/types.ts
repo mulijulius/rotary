@@ -56,6 +56,13 @@ export type Database = {
             referencedRelation: "accounts"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "accounts_parent_account_id_fkey"
+            columns: ["parent_account_id"]
+            isOneToOne: false
+            referencedRelation: "v_period_comparison"
+            referencedColumns: ["account_id"]
+          },
         ]
       }
       attendance: {
@@ -172,6 +179,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "bill_lines_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "v_period_comparison"
+            referencedColumns: ["account_id"]
+          },
+          {
             foreignKeyName: "bill_lines_bill_id_fkey"
             columns: ["bill_id"]
             isOneToOne: false
@@ -223,6 +237,62 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "bills_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_account_history"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "bills_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_balance_sheet"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "bills_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_cash_flow_statement"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "bills_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_financial_summary"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "bills_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_income_statement"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "bills_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_valuation_history"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "bills_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_period_comparison"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "bills_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_statement_of_equity"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
             foreignKeyName: "bills_journal_entry_id_fkey"
             columns: ["journal_entry_id"]
             isOneToOne: false
@@ -270,6 +340,62 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "fiscal_years"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "board_positions_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_account_history"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "board_positions_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_balance_sheet"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "board_positions_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_cash_flow_statement"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "board_positions_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_financial_summary"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "board_positions_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_income_statement"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "board_positions_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_valuation_history"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "board_positions_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_period_comparison"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "board_positions_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_statement_of_equity"
+            referencedColumns: ["fiscal_year_id"]
           },
           {
             foreignKeyName: "board_positions_member_id_fkey"
@@ -326,6 +452,269 @@ export type Database = {
           submitted_at?: string
         }
         Relationships: []
+      }
+      depreciation_schedules: {
+        Row: {
+          accumulated_to_date: number
+          book_value_at_end: number
+          created_at: string
+          depreciation_amount: number
+          fiscal_year_id: number
+          id: number
+          inventory_item_id: number
+          journal_entry_id: number | null
+        }
+        Insert: {
+          accumulated_to_date: number
+          book_value_at_end: number
+          created_at?: string
+          depreciation_amount: number
+          fiscal_year_id: number
+          id?: number
+          inventory_item_id: number
+          journal_entry_id?: number | null
+        }
+        Update: {
+          accumulated_to_date?: number
+          book_value_at_end?: number
+          created_at?: string
+          depreciation_amount?: number
+          fiscal_year_id?: number
+          id?: number
+          inventory_item_id?: number
+          journal_entry_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "depreciation_schedules_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_years"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "depreciation_schedules_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_account_history"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "depreciation_schedules_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_balance_sheet"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "depreciation_schedules_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_cash_flow_statement"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "depreciation_schedules_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_financial_summary"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "depreciation_schedules_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_income_statement"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "depreciation_schedules_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_valuation_history"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "depreciation_schedules_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_period_comparison"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "depreciation_schedules_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_statement_of_equity"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "depreciation_schedules_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "depreciation_schedules_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_valuation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "depreciation_schedules_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_campaigns: {
+        Row: {
+          body_html: string
+          created_at: string
+          created_by: number | null
+          id: number
+          recipient_type: Database["public"]["Enums"]["email_recipient_type"]
+          scheduled_at: string | null
+          sent_at: string | null
+          status: Database["public"]["Enums"]["email_status"]
+          subject: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body_html: string
+          created_at?: string
+          created_by?: number | null
+          id?: number
+          recipient_type: Database["public"]["Enums"]["email_recipient_type"]
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["email_status"]
+          subject: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          body_html?: string
+          created_at?: string
+          created_by?: number | null
+          id?: number
+          recipient_type?: Database["public"]["Enums"]["email_recipient_type"]
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["email_status"]
+          subject?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_campaigns_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_campaigns_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_attendance_summary"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "email_campaigns_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_member_balances"
+            referencedColumns: ["member_id"]
+          },
+        ]
+      }
+      email_logs: {
+        Row: {
+          campaign_id: number
+          clicked_at: string | null
+          created_at: string
+          error_message: string | null
+          id: number
+          member_id: number | null
+          opened_at: string | null
+          recipient_email: string
+          recipient_type: Database["public"]["Enums"]["email_recipient_type"]
+          sent_at: string | null
+          status: string
+          visitor_id: number | null
+        }
+        Insert: {
+          campaign_id: number
+          clicked_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: number
+          member_id?: number | null
+          opened_at?: string | null
+          recipient_email: string
+          recipient_type: Database["public"]["Enums"]["email_recipient_type"]
+          sent_at?: string | null
+          status?: string
+          visitor_id?: number | null
+        }
+        Update: {
+          campaign_id?: number
+          clicked_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: number
+          member_id?: number | null
+          opened_at?: string | null
+          recipient_email?: string
+          recipient_type?: Database["public"]["Enums"]["email_recipient_type"]
+          sent_at?: string | null
+          status?: string
+          visitor_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_logs_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "email_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_logs_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_logs_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "v_attendance_summary"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "email_logs_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "v_member_balances"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "email_logs_visitor_id_fkey"
+            columns: ["visitor_id"]
+            isOneToOne: false
+            referencedRelation: "visitors"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       fiscal_years: {
         Row: {
@@ -422,6 +811,328 @@ export type Database = {
           },
         ]
       }
+      inventory_counts: {
+        Row: {
+          count_date: string
+          counted_by: number
+          counted_quantity: number
+          created_at: string
+          id: number
+          inventory_item_id: number
+          notes: string | null
+          recorded_quantity: number
+          variance: number | null
+          verified_by: number | null
+        }
+        Insert: {
+          count_date?: string
+          counted_by: number
+          counted_quantity: number
+          created_at?: string
+          id?: number
+          inventory_item_id: number
+          notes?: string | null
+          recorded_quantity: number
+          variance?: number | null
+          verified_by?: number | null
+        }
+        Update: {
+          count_date?: string
+          counted_by?: number
+          counted_quantity?: number
+          created_at?: string
+          id?: number
+          inventory_item_id?: number
+          notes?: string | null
+          recorded_quantity?: number
+          variance?: number | null
+          verified_by?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_counts_counted_by_fkey"
+            columns: ["counted_by"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_counts_counted_by_fkey"
+            columns: ["counted_by"]
+            isOneToOne: false
+            referencedRelation: "v_attendance_summary"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "inventory_counts_counted_by_fkey"
+            columns: ["counted_by"]
+            isOneToOne: false
+            referencedRelation: "v_member_balances"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "inventory_counts_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_counts_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_valuation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_counts_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_counts_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "v_attendance_summary"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "inventory_counts_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "v_member_balances"
+            referencedColumns: ["member_id"]
+          },
+        ]
+      }
+      inventory_items: {
+        Row: {
+          accumulated_depreciation: number
+          barcode: string | null
+          book_value: number | null
+          category: Database["public"]["Enums"]["inventory_category"]
+          created_at: string
+          created_by: number | null
+          depreciation_account_id: number | null
+          depreciation_years: number | null
+          description: string | null
+          id: number
+          is_depreciable: boolean
+          location: string | null
+          name: string
+          purchase_date: string | null
+          quantity: number
+          responsible_member_id: number | null
+          serial_number: string | null
+          status: Database["public"]["Enums"]["inventory_status"]
+          total_value: number | null
+          unit_cost: number
+          unit_of_measure: string | null
+          updated_at: string
+          warranty_expiry: string | null
+        }
+        Insert: {
+          accumulated_depreciation?: number
+          barcode?: string | null
+          book_value?: number | null
+          category: Database["public"]["Enums"]["inventory_category"]
+          created_at?: string
+          created_by?: number | null
+          depreciation_account_id?: number | null
+          depreciation_years?: number | null
+          description?: string | null
+          id?: number
+          is_depreciable?: boolean
+          location?: string | null
+          name: string
+          purchase_date?: string | null
+          quantity?: number
+          responsible_member_id?: number | null
+          serial_number?: string | null
+          status?: Database["public"]["Enums"]["inventory_status"]
+          total_value?: number | null
+          unit_cost: number
+          unit_of_measure?: string | null
+          updated_at?: string
+          warranty_expiry?: string | null
+        }
+        Update: {
+          accumulated_depreciation?: number
+          barcode?: string | null
+          book_value?: number | null
+          category?: Database["public"]["Enums"]["inventory_category"]
+          created_at?: string
+          created_by?: number | null
+          depreciation_account_id?: number | null
+          depreciation_years?: number | null
+          description?: string | null
+          id?: number
+          is_depreciable?: boolean
+          location?: string | null
+          name?: string
+          purchase_date?: string | null
+          quantity?: number
+          responsible_member_id?: number | null
+          serial_number?: string | null
+          status?: Database["public"]["Enums"]["inventory_status"]
+          total_value?: number | null
+          unit_cost?: number
+          unit_of_measure?: string | null
+          updated_at?: string
+          warranty_expiry?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_attendance_summary"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "inventory_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_member_balances"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "inventory_items_depreciation_account_id_fkey"
+            columns: ["depreciation_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_depreciation_account_id_fkey"
+            columns: ["depreciation_account_id"]
+            isOneToOne: false
+            referencedRelation: "v_period_comparison"
+            referencedColumns: ["account_id"]
+          },
+          {
+            foreignKeyName: "inventory_items_responsible_member_id_fkey"
+            columns: ["responsible_member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_responsible_member_id_fkey"
+            columns: ["responsible_member_id"]
+            isOneToOne: false
+            referencedRelation: "v_attendance_summary"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "inventory_items_responsible_member_id_fkey"
+            columns: ["responsible_member_id"]
+            isOneToOne: false
+            referencedRelation: "v_member_balances"
+            referencedColumns: ["member_id"]
+          },
+        ]
+      }
+      inventory_movements: {
+        Row: {
+          created_at: string
+          from_location: string | null
+          id: number
+          inventory_item_id: number
+          journal_entry_id: number | null
+          movement_date: string
+          movement_type: Database["public"]["Enums"]["stock_movement_type"]
+          new_quantity: number
+          notes: string | null
+          old_quantity: number
+          quantity_changed: number
+          recorded_by: number
+          to_location: string | null
+        }
+        Insert: {
+          created_at?: string
+          from_location?: string | null
+          id?: number
+          inventory_item_id: number
+          journal_entry_id?: number | null
+          movement_date?: string
+          movement_type: Database["public"]["Enums"]["stock_movement_type"]
+          new_quantity: number
+          notes?: string | null
+          old_quantity: number
+          quantity_changed: number
+          recorded_by: number
+          to_location?: string | null
+        }
+        Update: {
+          created_at?: string
+          from_location?: string | null
+          id?: number
+          inventory_item_id?: number
+          journal_entry_id?: number | null
+          movement_date?: string
+          movement_type?: Database["public"]["Enums"]["stock_movement_type"]
+          new_quantity?: number
+          notes?: string | null
+          old_quantity?: number
+          quantity_changed?: number
+          recorded_by?: number
+          to_location?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_movements_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_valuation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "v_attendance_summary"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "v_member_balances"
+            referencedColumns: ["member_id"]
+          },
+        ]
+      }
       invoice_lines: {
         Row: {
           account_id: number
@@ -457,6 +1168,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "accounts"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_lines_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "v_period_comparison"
+            referencedColumns: ["account_id"]
           },
           {
             foreignKeyName: "invoice_lines_invoice_id_fkey"
@@ -511,6 +1229,62 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "fiscal_years"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_account_history"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "invoices_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_balance_sheet"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "invoices_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_cash_flow_statement"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "invoices_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_financial_summary"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "invoices_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_income_statement"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "invoices_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_valuation_history"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "invoices_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_period_comparison"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "invoices_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_statement_of_equity"
+            referencedColumns: ["fiscal_year_id"]
           },
           {
             foreignKeyName: "invoices_journal_entry_id_fkey"
@@ -615,6 +1389,62 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "journal_entries_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_account_history"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "journal_entries_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_balance_sheet"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "journal_entries_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_cash_flow_statement"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "journal_entries_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_financial_summary"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "journal_entries_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_income_statement"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "journal_entries_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_valuation_history"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "journal_entries_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_period_comparison"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "journal_entries_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_statement_of_equity"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
             foreignKeyName: "journal_entries_fund_id_fkey"
             columns: ["fund_id"]
             isOneToOne: false
@@ -663,6 +1493,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "journal_lines_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "v_period_comparison"
+            referencedColumns: ["account_id"]
+          },
+          {
             foreignKeyName: "journal_lines_journal_entry_id_fkey"
             columns: ["journal_entry_id"]
             isOneToOne: false
@@ -685,6 +1522,67 @@ export type Database = {
           },
           {
             foreignKeyName: "journal_lines_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "v_member_balances"
+            referencedColumns: ["member_id"]
+          },
+        ]
+      }
+      leave_requests: {
+        Row: {
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          end_date: string | null
+          id: number
+          member_id: number
+          reason: string
+          requested_at: string
+          start_date: string
+          status: Database["public"]["Enums"]["request_status"]
+        }
+        Insert: {
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          end_date?: string | null
+          id?: number
+          member_id: number
+          reason: string
+          requested_at?: string
+          start_date: string
+          status?: Database["public"]["Enums"]["request_status"]
+        }
+        Update: {
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          end_date?: string | null
+          id?: number
+          member_id?: number
+          reason?: string
+          requested_at?: string
+          start_date?: string
+          status?: Database["public"]["Enums"]["request_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leave_requests_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "v_attendance_summary"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "leave_requests_member_id_fkey"
             columns: ["member_id"]
             isOneToOne: false
             referencedRelation: "v_member_balances"
@@ -940,6 +1838,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "payments_deposit_account_id_fkey"
+            columns: ["deposit_account_id"]
+            isOneToOne: false
+            referencedRelation: "v_period_comparison"
+            referencedColumns: ["account_id"]
+          },
+          {
             foreignKeyName: "payments_journal_entry_id_fkey"
             columns: ["journal_entry_id"]
             isOneToOne: false
@@ -962,6 +1867,61 @@ export type Database = {
           },
           {
             foreignKeyName: "payments_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "v_member_balances"
+            referencedColumns: ["member_id"]
+          },
+        ]
+      }
+      profile_edit_requests: {
+        Row: {
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          id: number
+          member_id: number
+          requested_at: string
+          requested_changes: Json
+          status: Database["public"]["Enums"]["request_status"]
+        }
+        Insert: {
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          id?: number
+          member_id: number
+          requested_at?: string
+          requested_changes: Json
+          status?: Database["public"]["Enums"]["request_status"]
+        }
+        Update: {
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          id?: number
+          member_id?: number
+          requested_at?: string
+          requested_changes?: Json
+          status?: Database["public"]["Enums"]["request_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_edit_requests_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_edit_requests_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "v_attendance_summary"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "profile_edit_requests_member_id_fkey"
             columns: ["member_id"]
             isOneToOne: false
             referencedRelation: "v_member_balances"
@@ -1060,33 +2020,77 @@ export type Database = {
           },
         ]
       }
-      user_roles: {
+      role_decisions: {
         Row: {
-          id: string
+          action: Database["public"]["Enums"]["role_audit_action"]
+          actor_email: string | null
+          actor_user_id: string | null
+          decided_at: string
+          id: number
           role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-          status: Database["public"]["Enums"]["role_status"]
-          requested_at: string
-          decided_at: string | null
-          decided_by: string | null
+          subject_email: string | null
+          subject_user_id: string
+          user_role_id: string
         }
         Insert: {
-          id?: string
+          action: Database["public"]["Enums"]["role_audit_action"]
+          actor_email?: string | null
+          actor_user_id?: string | null
+          decided_at?: string
+          id?: number
           role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-          status?: Database["public"]["Enums"]["role_status"]
-          requested_at?: string
-          decided_at?: string | null
-          decided_by?: string | null
+          subject_email?: string | null
+          subject_user_id: string
+          user_role_id: string
         }
         Update: {
-          id?: string
+          action?: Database["public"]["Enums"]["role_audit_action"]
+          actor_email?: string | null
+          actor_user_id?: string | null
+          decided_at?: string
+          id?: number
           role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
-          status?: Database["public"]["Enums"]["role_status"]
-          requested_at?: string
+          subject_email?: string | null
+          subject_user_id?: string
+          user_role_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_decisions_user_role_id_fkey"
+            columns: ["user_role_id"]
+            isOneToOne: false
+            referencedRelation: "user_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          decided_at: string | null
+          decided_by: string | null
+          id: string
+          requested_at: string
+          role: Database["public"]["Enums"]["app_role"]
+          status: Database["public"]["Enums"]["role_status"]
+          user_id: string
+        }
+        Insert: {
           decided_at?: string | null
           decided_by?: string | null
+          id?: string
+          requested_at?: string
+          role: Database["public"]["Enums"]["app_role"]
+          status?: Database["public"]["Enums"]["role_status"]
+          user_id: string
+        }
+        Update: {
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          requested_at?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          status?: Database["public"]["Enums"]["role_status"]
+          user_id?: string
         }
         Relationships: []
       }
@@ -1111,8 +2115,73 @@ export type Database = {
         }
         Relationships: []
       }
+      visitors: {
+        Row: {
+          created_at: string
+          email: string
+          first_name: string
+          id: number
+          interest: Database["public"]["Enums"]["visitor_interest"]
+          last_name: string
+          meeting_id: number | null
+          notes: string | null
+          organization: string | null
+          phone: string | null
+          updated_at: string
+          visited_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          first_name: string
+          id?: number
+          interest?: Database["public"]["Enums"]["visitor_interest"]
+          last_name: string
+          meeting_id?: number | null
+          notes?: string | null
+          organization?: string | null
+          phone?: string | null
+          updated_at?: string
+          visited_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          first_name?: string
+          id?: number
+          interest?: Database["public"]["Enums"]["visitor_interest"]
+          last_name?: string
+          meeting_id?: number | null
+          notes?: string | null
+          organization?: string | null
+          phone?: string | null
+          updated_at?: string
+          visited_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visitors_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
+      v_account_history: {
+        Row: {
+          code: string | null
+          fiscal_year_id: number | null
+          fiscal_year_name: string | null
+          name: string | null
+          period_balance: number | null
+          period_end: string | null
+          type: Database["public"]["Enums"]["account_type"] | null
+        }
+        Relationships: []
+      }
       v_attendance_summary: {
         Row: {
           attendance_pct: number | null
@@ -1123,12 +2192,128 @@ export type Database = {
         }
         Relationships: []
       }
+      v_balance_sheet: {
+        Row: {
+          as_of_date: string | null
+          balance: number | null
+          code: string | null
+          fiscal_year_id: number | null
+          fiscal_year_name: string | null
+          name: string | null
+          parent_account_id: number | null
+          type: Database["public"]["Enums"]["account_type"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accounts_parent_account_id_fkey"
+            columns: ["parent_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "accounts_parent_account_id_fkey"
+            columns: ["parent_account_id"]
+            isOneToOne: false
+            referencedRelation: "v_period_comparison"
+            referencedColumns: ["account_id"]
+          },
+        ]
+      }
+      v_cash_flow_statement: {
+        Row: {
+          activity_type: string | null
+          amount: number | null
+          code: string | null
+          end_date: string | null
+          fiscal_year_id: number | null
+          fiscal_year_name: string | null
+          name: string | null
+          start_date: string | null
+        }
+        Relationships: []
+      }
+      v_financial_summary: {
+        Row: {
+          end_date: string | null
+          fiscal_year_id: number | null
+          fiscal_year_name: string | null
+          start_date: string | null
+          total_assets: number | null
+          total_equity: number | null
+          total_expenses: number | null
+          total_income: number | null
+          total_liabilities: number | null
+        }
+        Relationships: []
+      }
+      v_income_statement: {
+        Row: {
+          balance: number | null
+          code: string | null
+          end_date: string | null
+          fiscal_year_id: number | null
+          fiscal_year_name: string | null
+          name: string | null
+          start_date: string | null
+          total_credit: number | null
+          total_debit: number | null
+          type: Database["public"]["Enums"]["account_type"] | null
+        }
+        Relationships: []
+      }
+      v_inventory_valuation: {
+        Row: {
+          accumulated_depreciation: number | null
+          book_value: number | null
+          category: Database["public"]["Enums"]["inventory_category"] | null
+          depreciation_years: number | null
+          id: number | null
+          last_movement_date: string | null
+          movements_count: number | null
+          name: string | null
+          purchase_date: string | null
+          quantity: number | null
+          status: Database["public"]["Enums"]["inventory_status"] | null
+          total_value: number | null
+          unit_cost: number | null
+        }
+        Relationships: []
+      }
+      v_inventory_valuation_history: {
+        Row: {
+          accumulated_depreciation: number | null
+          book_value: number | null
+          fiscal_year_id: number | null
+          fiscal_year_name: string | null
+          items_count: number | null
+          period_end: string | null
+          total_cost: number | null
+        }
+        Relationships: []
+      }
       v_member_balances: {
         Row: {
           balance_due: number | null
           member_id: number | null
           member_name: string | null
           ri_number: string | null
+        }
+        Relationships: []
+      }
+      v_period_comparison: {
+        Row: {
+          account_id: number | null
+          code: string | null
+          current_balance: number | null
+          end_date: string | null
+          fiscal_year_id: number | null
+          fiscal_year_name: string | null
+          name: string | null
+          previous_balance: number | null
+          type: Database["public"]["Enums"]["account_type"] | null
+          variance: number | null
+          variance_percent: number | null
         }
         Relationships: []
       }
@@ -1145,6 +2330,51 @@ export type Database = {
         }
         Relationships: []
       }
+      v_role_audit: {
+        Row: {
+          action: Database["public"]["Enums"]["role_audit_action"] | null
+          actor_email: string | null
+          actor_user_id: string | null
+          decided_at: string | null
+          id: number | null
+          role: Database["public"]["Enums"]["app_role"] | null
+          subject_email: string | null
+          subject_user_id: string | null
+        }
+        Insert: {
+          action?: Database["public"]["Enums"]["role_audit_action"] | null
+          actor_email?: string | null
+          actor_user_id?: string | null
+          decided_at?: string | null
+          id?: number | null
+          role?: Database["public"]["Enums"]["app_role"] | null
+          subject_email?: string | null
+          subject_user_id?: string | null
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["role_audit_action"] | null
+          actor_email?: string | null
+          actor_user_id?: string | null
+          decided_at?: string | null
+          id?: number | null
+          role?: Database["public"]["Enums"]["app_role"] | null
+          subject_email?: string | null
+          subject_user_id?: string | null
+        }
+        Relationships: []
+      }
+      v_statement_of_equity: {
+        Row: {
+          amount: number | null
+          code: string | null
+          end_date: string | null
+          fiscal_year_id: number | null
+          fiscal_year_name: string | null
+          name: string | null
+          start_date: string | null
+        }
+        Relationships: []
+      }
       v_trial_balance: {
         Row: {
           balance: number | null
@@ -1158,11 +2388,27 @@ export type Database = {
       }
     }
     Functions: {
+      fn_calculate_depreciation: { Args: never; Returns: undefined }
+      fn_decide_leave_request: {
+        Args: { _approve: boolean; _note: string; _request_id: number }
+        Returns: undefined
+      }
+      fn_decide_profile_edit_request: {
+        Args: { _approve: boolean; _note: string; _request_id: number }
+        Returns: undefined
+      }
+      fn_reissue_qr_token: { Args: { _member_id: number }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_admin_or_editor: { Args: { _user_id: string }; Returns: boolean }
+      is_admin_or_secretary: { Args: { _user_id: string }; Returns: boolean }
+      is_admin_secretary_or_editor: {
+        Args: { _user_id: string }
         Returns: boolean
       }
       is_officer: { Args: { _user_id: string }; Returns: boolean }
@@ -1173,6 +2419,17 @@ export type Database = {
       attendance_status: "present" | "late" | "absent" | "excused"
       bill_status: "draft" | "received" | "partially_paid" | "paid" | "void"
       checkin_method: "qr_scan" | "manual"
+      email_recipient_type: "member" | "visitor" | "list"
+      email_status: "draft" | "scheduled" | "sent" | "failed"
+      inventory_category:
+        | "equipment"
+        | "furniture"
+        | "technology"
+        | "supplies"
+        | "vehicle"
+        | "building"
+        | "other"
+      inventory_status: "active" | "damaged" | "lost" | "sold" | "disposed"
       invoice_status: "draft" | "issued" | "partially_paid" | "paid" | "void"
       je_source:
         | "manual"
@@ -1192,7 +2449,23 @@ export type Database = {
       normal_side: "debit" | "credit"
       payment_method: "cash" | "mpesa" | "bank_transfer" | "cheque" | "card"
       project_status: "planned" | "ongoing" | "completed"
+      request_status: "pending" | "approved" | "denied"
+      role_audit_action: "requested" | "approved" | "revoked"
       role_status: "pending" | "approved" | "revoked"
+      stock_movement_type:
+        | "purchase"
+        | "transfer"
+        | "usage"
+        | "loss"
+        | "repair"
+        | "depreciation"
+        | "disposal"
+      visitor_interest:
+        | "general"
+        | "membership"
+        | "projects"
+        | "events"
+        | "other"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1325,6 +2598,18 @@ export const Constants = {
       attendance_status: ["present", "late", "absent", "excused"],
       bill_status: ["draft", "received", "partially_paid", "paid", "void"],
       checkin_method: ["qr_scan", "manual"],
+      email_recipient_type: ["member", "visitor", "list"],
+      email_status: ["draft", "scheduled", "sent", "failed"],
+      inventory_category: [
+        "equipment",
+        "furniture",
+        "technology",
+        "supplies",
+        "vehicle",
+        "building",
+        "other",
+      ],
+      inventory_status: ["active", "damaged", "lost", "sold", "disposed"],
       invoice_status: ["draft", "issued", "partially_paid", "paid", "void"],
       je_source: [
         "manual",
@@ -1346,7 +2631,25 @@ export const Constants = {
       normal_side: ["debit", "credit"],
       payment_method: ["cash", "mpesa", "bank_transfer", "cheque", "card"],
       project_status: ["planned", "ongoing", "completed"],
+      request_status: ["pending", "approved", "denied"],
+      role_audit_action: ["requested", "approved", "revoked"],
       role_status: ["pending", "approved", "revoked"],
+      stock_movement_type: [
+        "purchase",
+        "transfer",
+        "usage",
+        "loss",
+        "repair",
+        "depreciation",
+        "disposal",
+      ],
+      visitor_interest: [
+        "general",
+        "membership",
+        "projects",
+        "events",
+        "other",
+      ],
     },
   },
 } as const

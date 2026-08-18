@@ -20,10 +20,28 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as NewsRouteImport } from './routes/news'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as VisitorRegistrationRouteImport } from './routes/visitor-registration'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as AdminAccountsRouteImport } from './routes/admin/accounts'
+import { Route as AdminAuditRouteImport } from './routes/admin/audit'
+import { Route as AdminBillsRouteImport } from './routes/admin/bills'
+import { Route as AdminBoardPositionsRouteImport } from './routes/admin/board-positions'
+import { Route as AdminEmailCampaignsRouteImport } from './routes/admin/email-campaigns'
+import { Route as AdminFiscalYearsRouteImport } from './routes/admin/fiscal-years'
+import { Route as AdminGalleryRouteImport } from './routes/admin/gallery'
+import { Route as AdminInventoryRouteImport } from './routes/admin/inventory'
+import { Route as AdminInvoicesRouteImport } from './routes/admin/invoices'
+import { Route as AdminJournalEntriesRouteImport } from './routes/admin/journal-entries'
+import { Route as AdminMeetingsRouteImport } from './routes/admin/meetings'
 import { Route as AdminMembersRouteImport } from './routes/admin/members'
 import { Route as AdminMessagesRouteImport } from './routes/admin/messages'
+import { Route as AdminNewsRouteImport } from './routes/admin/news'
+import { Route as AdminProjectsRouteImport } from './routes/admin/projects'
+import { Route as AdminReportsRouteImport } from './routes/admin/reports'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
+import { Route as AdminVisitorsRouteImport } from './routes/admin/visitors'
+import { Route as AttendanceCheckInRouteImport } from './routes/attendance/check-in'
+import { Route as AdminAttendanceMeetingIdRouteImport } from './routes/admin/attendance.$meetingId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -80,9 +98,69 @@ const SignupRoute = SignupRouteImport.update({
   path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VisitorRegistrationRoute = VisitorRegistrationRouteImport.update({
+  id: '/visitor-registration',
+  path: '/visitor-registration',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAccountsRoute = AdminAccountsRouteImport.update({
+  id: '/accounts',
+  path: '/accounts',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAuditRoute = AdminAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminBillsRoute = AdminBillsRouteImport.update({
+  id: '/bills',
+  path: '/bills',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminBoardPositionsRoute = AdminBoardPositionsRouteImport.update({
+  id: '/board-positions',
+  path: '/board-positions',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminEmailCampaignsRoute = AdminEmailCampaignsRouteImport.update({
+  id: '/email-campaigns',
+  path: '/email-campaigns',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminFiscalYearsRoute = AdminFiscalYearsRouteImport.update({
+  id: '/fiscal-years',
+  path: '/fiscal-years',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminGalleryRoute = AdminGalleryRouteImport.update({
+  id: '/gallery',
+  path: '/gallery',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminInventoryRoute = AdminInventoryRouteImport.update({
+  id: '/inventory',
+  path: '/inventory',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminInvoicesRoute = AdminInvoicesRouteImport.update({
+  id: '/invoices',
+  path: '/invoices',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminJournalEntriesRoute = AdminJournalEntriesRouteImport.update({
+  id: '/journal-entries',
+  path: '/journal-entries',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminMeetingsRoute = AdminMeetingsRouteImport.update({
+  id: '/meetings',
+  path: '/meetings',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminMembersRoute = AdminMembersRouteImport.update({
@@ -95,11 +173,42 @@ const AdminMessagesRoute = AdminMessagesRouteImport.update({
   path: '/messages',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminNewsRoute = AdminNewsRouteImport.update({
+  id: '/news',
+  path: '/news',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminProjectsRoute = AdminProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminReportsRoute = AdminReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminVisitorsRoute = AdminVisitorsRouteImport.update({
+  id: '/visitors',
+  path: '/visitors',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AttendanceCheckInRoute = AttendanceCheckInRouteImport.update({
+  id: '/attendance/check-in',
+  path: '/attendance/check-in',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminAttendanceMeetingIdRoute =
+  AdminAttendanceMeetingIdRouteImport.update({
+    id: '/attendance/$meetingId',
+    path: '/attendance/$meetingId',
+    getParentRoute: () => AdminRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -113,10 +222,28 @@ export interface FileRoutesByFullPath {
   '/news': typeof NewsRoute
   '/projects': typeof ProjectsRoute
   '/signup': typeof SignupRoute
+  '/visitor-registration': typeof VisitorRegistrationRoute
+  '/admin/accounts': typeof AdminAccountsRoute
+  '/admin/audit': typeof AdminAuditRoute
+  '/admin/bills': typeof AdminBillsRoute
+  '/admin/board-positions': typeof AdminBoardPositionsRoute
+  '/admin/email-campaigns': typeof AdminEmailCampaignsRoute
+  '/admin/fiscal-years': typeof AdminFiscalYearsRoute
+  '/admin/gallery': typeof AdminGalleryRoute
+  '/admin/inventory': typeof AdminInventoryRoute
+  '/admin/invoices': typeof AdminInvoicesRoute
+  '/admin/journal-entries': typeof AdminJournalEntriesRoute
+  '/admin/meetings': typeof AdminMeetingsRoute
   '/admin/members': typeof AdminMembersRoute
   '/admin/messages': typeof AdminMessagesRoute
+  '/admin/news': typeof AdminNewsRoute
+  '/admin/projects': typeof AdminProjectsRoute
+  '/admin/reports': typeof AdminReportsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/admin/visitors': typeof AdminVisitorsRoute
+  '/attendance/check-in': typeof AttendanceCheckInRoute
   '/admin/': typeof AdminIndexRoute
+  '/admin/attendance/$meetingId': typeof AdminAttendanceMeetingIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -129,10 +256,28 @@ export interface FileRoutesByTo {
   '/news': typeof NewsRoute
   '/projects': typeof ProjectsRoute
   '/signup': typeof SignupRoute
+  '/visitor-registration': typeof VisitorRegistrationRoute
+  '/admin/accounts': typeof AdminAccountsRoute
+  '/admin/audit': typeof AdminAuditRoute
+  '/admin/bills': typeof AdminBillsRoute
+  '/admin/board-positions': typeof AdminBoardPositionsRoute
+  '/admin/email-campaigns': typeof AdminEmailCampaignsRoute
+  '/admin/fiscal-years': typeof AdminFiscalYearsRoute
+  '/admin/gallery': typeof AdminGalleryRoute
+  '/admin/inventory': typeof AdminInventoryRoute
+  '/admin/invoices': typeof AdminInvoicesRoute
+  '/admin/journal-entries': typeof AdminJournalEntriesRoute
+  '/admin/meetings': typeof AdminMeetingsRoute
   '/admin/members': typeof AdminMembersRoute
   '/admin/messages': typeof AdminMessagesRoute
+  '/admin/news': typeof AdminNewsRoute
+  '/admin/projects': typeof AdminProjectsRoute
+  '/admin/reports': typeof AdminReportsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/admin/visitors': typeof AdminVisitorsRoute
+  '/attendance/check-in': typeof AttendanceCheckInRoute
   '/admin': typeof AdminIndexRoute
+  '/admin/attendance/$meetingId': typeof AdminAttendanceMeetingIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -147,10 +292,28 @@ export interface FileRoutesById {
   '/news': typeof NewsRoute
   '/projects': typeof ProjectsRoute
   '/signup': typeof SignupRoute
+  '/visitor-registration': typeof VisitorRegistrationRoute
+  '/admin/accounts': typeof AdminAccountsRoute
+  '/admin/audit': typeof AdminAuditRoute
+  '/admin/bills': typeof AdminBillsRoute
+  '/admin/board-positions': typeof AdminBoardPositionsRoute
+  '/admin/email-campaigns': typeof AdminEmailCampaignsRoute
+  '/admin/fiscal-years': typeof AdminFiscalYearsRoute
+  '/admin/gallery': typeof AdminGalleryRoute
+  '/admin/inventory': typeof AdminInventoryRoute
+  '/admin/invoices': typeof AdminInvoicesRoute
+  '/admin/journal-entries': typeof AdminJournalEntriesRoute
+  '/admin/meetings': typeof AdminMeetingsRoute
   '/admin/members': typeof AdminMembersRoute
   '/admin/messages': typeof AdminMessagesRoute
+  '/admin/news': typeof AdminNewsRoute
+  '/admin/projects': typeof AdminProjectsRoute
+  '/admin/reports': typeof AdminReportsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/admin/visitors': typeof AdminVisitorsRoute
+  '/attendance/check-in': typeof AttendanceCheckInRoute
   '/admin/': typeof AdminIndexRoute
+  '/admin/attendance/$meetingId': typeof AdminAttendanceMeetingIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -166,10 +329,28 @@ export interface FileRouteTypes {
     | '/news'
     | '/projects'
     | '/signup'
+    | '/visitor-registration'
+    | '/admin/accounts'
+    | '/admin/audit'
+    | '/admin/bills'
+    | '/admin/board-positions'
+    | '/admin/email-campaigns'
+    | '/admin/fiscal-years'
+    | '/admin/gallery'
+    | '/admin/inventory'
+    | '/admin/invoices'
+    | '/admin/journal-entries'
+    | '/admin/meetings'
     | '/admin/members'
     | '/admin/messages'
+    | '/admin/news'
+    | '/admin/projects'
+    | '/admin/reports'
     | '/admin/users'
+    | '/admin/visitors'
+    | '/attendance/check-in'
     | '/admin/'
+    | '/admin/attendance/$meetingId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -182,10 +363,28 @@ export interface FileRouteTypes {
     | '/news'
     | '/projects'
     | '/signup'
+    | '/visitor-registration'
+    | '/admin/accounts'
+    | '/admin/audit'
+    | '/admin/bills'
+    | '/admin/board-positions'
+    | '/admin/email-campaigns'
+    | '/admin/fiscal-years'
+    | '/admin/gallery'
+    | '/admin/inventory'
+    | '/admin/invoices'
+    | '/admin/journal-entries'
+    | '/admin/meetings'
     | '/admin/members'
     | '/admin/messages'
+    | '/admin/news'
+    | '/admin/projects'
+    | '/admin/reports'
     | '/admin/users'
+    | '/admin/visitors'
+    | '/attendance/check-in'
     | '/admin'
+    | '/admin/attendance/$meetingId'
   id:
     | '__root__'
     | '/'
@@ -199,10 +398,28 @@ export interface FileRouteTypes {
     | '/news'
     | '/projects'
     | '/signup'
+    | '/visitor-registration'
+    | '/admin/accounts'
+    | '/admin/audit'
+    | '/admin/bills'
+    | '/admin/board-positions'
+    | '/admin/email-campaigns'
+    | '/admin/fiscal-years'
+    | '/admin/gallery'
+    | '/admin/inventory'
+    | '/admin/invoices'
+    | '/admin/journal-entries'
+    | '/admin/meetings'
     | '/admin/members'
     | '/admin/messages'
+    | '/admin/news'
+    | '/admin/projects'
+    | '/admin/reports'
     | '/admin/users'
+    | '/admin/visitors'
+    | '/attendance/check-in'
     | '/admin/'
+    | '/admin/attendance/$meetingId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -217,6 +434,8 @@ export interface RootRouteChildren {
   NewsRoute: typeof NewsRoute
   ProjectsRoute: typeof ProjectsRoute
   SignupRoute: typeof SignupRoute
+  VisitorRegistrationRoute: typeof VisitorRegistrationRoute
+  AttendanceCheckInRoute: typeof AttendanceCheckInRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -298,11 +517,95 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/visitor-registration': {
+      id: '/visitor-registration'
+      path: '/visitor-registration'
+      fullPath: '/visitor-registration'
+      preLoaderRoute: typeof VisitorRegistrationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/': {
       id: '/admin/'
       path: '/'
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/accounts': {
+      id: '/admin/accounts'
+      path: '/accounts'
+      fullPath: '/admin/accounts'
+      preLoaderRoute: typeof AdminAccountsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/audit': {
+      id: '/admin/audit'
+      path: '/audit'
+      fullPath: '/admin/audit'
+      preLoaderRoute: typeof AdminAuditRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/bills': {
+      id: '/admin/bills'
+      path: '/bills'
+      fullPath: '/admin/bills'
+      preLoaderRoute: typeof AdminBillsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/board-positions': {
+      id: '/admin/board-positions'
+      path: '/board-positions'
+      fullPath: '/admin/board-positions'
+      preLoaderRoute: typeof AdminBoardPositionsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/email-campaigns': {
+      id: '/admin/email-campaigns'
+      path: '/email-campaigns'
+      fullPath: '/admin/email-campaigns'
+      preLoaderRoute: typeof AdminEmailCampaignsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/fiscal-years': {
+      id: '/admin/fiscal-years'
+      path: '/fiscal-years'
+      fullPath: '/admin/fiscal-years'
+      preLoaderRoute: typeof AdminFiscalYearsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/gallery': {
+      id: '/admin/gallery'
+      path: '/gallery'
+      fullPath: '/admin/gallery'
+      preLoaderRoute: typeof AdminGalleryRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/inventory': {
+      id: '/admin/inventory'
+      path: '/inventory'
+      fullPath: '/admin/inventory'
+      preLoaderRoute: typeof AdminInventoryRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/invoices': {
+      id: '/admin/invoices'
+      path: '/invoices'
+      fullPath: '/admin/invoices'
+      preLoaderRoute: typeof AdminInvoicesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/journal-entries': {
+      id: '/admin/journal-entries'
+      path: '/journal-entries'
+      fullPath: '/admin/journal-entries'
+      preLoaderRoute: typeof AdminJournalEntriesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/meetings': {
+      id: '/admin/meetings'
+      path: '/meetings'
+      fullPath: '/admin/meetings'
+      preLoaderRoute: typeof AdminMeetingsRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/members': {
@@ -319,6 +622,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminMessagesRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/news': {
+      id: '/admin/news'
+      path: '/news'
+      fullPath: '/admin/news'
+      preLoaderRoute: typeof AdminNewsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/projects': {
+      id: '/admin/projects'
+      path: '/projects'
+      fullPath: '/admin/projects'
+      preLoaderRoute: typeof AdminProjectsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/reports': {
+      id: '/admin/reports'
+      path: '/reports'
+      fullPath: '/admin/reports'
+      preLoaderRoute: typeof AdminReportsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/users': {
       id: '/admin/users'
       path: '/users'
@@ -326,21 +650,74 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/visitors': {
+      id: '/admin/visitors'
+      path: '/visitors'
+      fullPath: '/admin/visitors'
+      preLoaderRoute: typeof AdminVisitorsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/attendance/check-in': {
+      id: '/attendance/check-in'
+      path: '/attendance/check-in'
+      fullPath: '/attendance/check-in'
+      preLoaderRoute: typeof AttendanceCheckInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/attendance/$meetingId': {
+      id: '/admin/attendance/$meetingId'
+      path: '/attendance/$meetingId'
+      fullPath: '/admin/attendance/$meetingId'
+      preLoaderRoute: typeof AdminAttendanceMeetingIdRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
 interface AdminRouteChildren {
+  AdminAccountsRoute: typeof AdminAccountsRoute
+  AdminAuditRoute: typeof AdminAuditRoute
+  AdminBillsRoute: typeof AdminBillsRoute
+  AdminBoardPositionsRoute: typeof AdminBoardPositionsRoute
+  AdminEmailCampaignsRoute: typeof AdminEmailCampaignsRoute
+  AdminFiscalYearsRoute: typeof AdminFiscalYearsRoute
+  AdminGalleryRoute: typeof AdminGalleryRoute
+  AdminInventoryRoute: typeof AdminInventoryRoute
+  AdminInvoicesRoute: typeof AdminInvoicesRoute
+  AdminJournalEntriesRoute: typeof AdminJournalEntriesRoute
+  AdminMeetingsRoute: typeof AdminMeetingsRoute
   AdminMembersRoute: typeof AdminMembersRoute
   AdminMessagesRoute: typeof AdminMessagesRoute
+  AdminNewsRoute: typeof AdminNewsRoute
+  AdminProjectsRoute: typeof AdminProjectsRoute
+  AdminReportsRoute: typeof AdminReportsRoute
   AdminUsersRoute: typeof AdminUsersRoute
+  AdminVisitorsRoute: typeof AdminVisitorsRoute
   AdminIndexRoute: typeof AdminIndexRoute
+  AdminAttendanceMeetingIdRoute: typeof AdminAttendanceMeetingIdRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminAccountsRoute: AdminAccountsRoute,
+  AdminAuditRoute: AdminAuditRoute,
+  AdminBillsRoute: AdminBillsRoute,
+  AdminBoardPositionsRoute: AdminBoardPositionsRoute,
+  AdminEmailCampaignsRoute: AdminEmailCampaignsRoute,
+  AdminFiscalYearsRoute: AdminFiscalYearsRoute,
+  AdminGalleryRoute: AdminGalleryRoute,
+  AdminInventoryRoute: AdminInventoryRoute,
+  AdminInvoicesRoute: AdminInvoicesRoute,
+  AdminJournalEntriesRoute: AdminJournalEntriesRoute,
+  AdminMeetingsRoute: AdminMeetingsRoute,
   AdminMembersRoute: AdminMembersRoute,
   AdminMessagesRoute: AdminMessagesRoute,
+  AdminNewsRoute: AdminNewsRoute,
+  AdminProjectsRoute: AdminProjectsRoute,
+  AdminReportsRoute: AdminReportsRoute,
   AdminUsersRoute: AdminUsersRoute,
+  AdminVisitorsRoute: AdminVisitorsRoute,
   AdminIndexRoute: AdminIndexRoute,
+  AdminAttendanceMeetingIdRoute: AdminAttendanceMeetingIdRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
@@ -357,6 +734,8 @@ const rootRouteChildren: RootRouteChildren = {
   NewsRoute: NewsRoute,
   ProjectsRoute: ProjectsRoute,
   SignupRoute: SignupRoute,
+  VisitorRegistrationRoute: VisitorRegistrationRoute,
+  AttendanceCheckInRoute: AttendanceCheckInRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
