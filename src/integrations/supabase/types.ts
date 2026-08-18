@@ -56,6 +56,13 @@ export type Database = {
             referencedRelation: "accounts"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "accounts_parent_account_id_fkey"
+            columns: ["parent_account_id"]
+            isOneToOne: false
+            referencedRelation: "v_period_comparison"
+            referencedColumns: ["account_id"]
+          },
         ]
       }
       attendance: {
@@ -172,6 +179,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "bill_lines_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "v_period_comparison"
+            referencedColumns: ["account_id"]
+          },
+          {
             foreignKeyName: "bill_lines_bill_id_fkey"
             columns: ["bill_id"]
             isOneToOne: false
@@ -223,6 +237,62 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "bills_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_account_history"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "bills_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_balance_sheet"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "bills_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_cash_flow_statement"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "bills_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_financial_summary"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "bills_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_income_statement"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "bills_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_valuation_history"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "bills_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_period_comparison"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "bills_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_statement_of_equity"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
             foreignKeyName: "bills_journal_entry_id_fkey"
             columns: ["journal_entry_id"]
             isOneToOne: false
@@ -270,6 +340,62 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "fiscal_years"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "board_positions_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_account_history"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "board_positions_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_balance_sheet"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "board_positions_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_cash_flow_statement"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "board_positions_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_financial_summary"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "board_positions_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_income_statement"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "board_positions_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_valuation_history"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "board_positions_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_period_comparison"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "board_positions_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_statement_of_equity"
+            referencedColumns: ["fiscal_year_id"]
           },
           {
             foreignKeyName: "board_positions_member_id_fkey"
@@ -367,10 +493,73 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "depreciation_schedules_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_account_history"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "depreciation_schedules_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_balance_sheet"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "depreciation_schedules_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_cash_flow_statement"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "depreciation_schedules_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_financial_summary"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "depreciation_schedules_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_income_statement"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "depreciation_schedules_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_valuation_history"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "depreciation_schedules_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_period_comparison"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "depreciation_schedules_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_statement_of_equity"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
             foreignKeyName: "depreciation_schedules_inventory_item_id_fkey"
             columns: ["inventory_item_id"]
             isOneToOne: false
             referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "depreciation_schedules_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_valuation"
             referencedColumns: ["id"]
           },
           {
@@ -689,6 +878,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "inventory_counts_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_valuation"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "inventory_counts_verified_by_fkey"
             columns: ["verified_by"]
             isOneToOne: false
@@ -817,6 +1013,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "inventory_items_depreciation_account_id_fkey"
+            columns: ["depreciation_account_id"]
+            isOneToOne: false
+            referencedRelation: "v_period_comparison"
+            referencedColumns: ["account_id"]
+          },
+          {
             foreignKeyName: "inventory_items_responsible_member_id_fkey"
             columns: ["responsible_member_id"]
             isOneToOne: false
@@ -894,6 +1097,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "inventory_movements_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_valuation"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "inventory_movements_journal_entry_id_fkey"
             columns: ["journal_entry_id"]
             isOneToOne: false
@@ -960,6 +1170,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "invoice_lines_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "v_period_comparison"
+            referencedColumns: ["account_id"]
+          },
+          {
             foreignKeyName: "invoice_lines_invoice_id_fkey"
             columns: ["invoice_id"]
             isOneToOne: false
@@ -1012,6 +1229,62 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "fiscal_years"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_account_history"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "invoices_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_balance_sheet"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "invoices_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_cash_flow_statement"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "invoices_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_financial_summary"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "invoices_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_income_statement"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "invoices_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_valuation_history"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "invoices_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_period_comparison"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "invoices_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_statement_of_equity"
+            referencedColumns: ["fiscal_year_id"]
           },
           {
             foreignKeyName: "invoices_journal_entry_id_fkey"
@@ -1116,6 +1389,62 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "journal_entries_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_account_history"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "journal_entries_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_balance_sheet"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "journal_entries_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_cash_flow_statement"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "journal_entries_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_financial_summary"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "journal_entries_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_income_statement"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "journal_entries_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_valuation_history"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "journal_entries_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_period_comparison"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
+            foreignKeyName: "journal_entries_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "v_statement_of_equity"
+            referencedColumns: ["fiscal_year_id"]
+          },
+          {
             foreignKeyName: "journal_entries_fund_id_fkey"
             columns: ["fund_id"]
             isOneToOne: false
@@ -1162,6 +1491,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "accounts"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_lines_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "v_period_comparison"
+            referencedColumns: ["account_id"]
           },
           {
             foreignKeyName: "journal_lines_journal_entry_id_fkey"
@@ -1502,6 +1838,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "payments_deposit_account_id_fkey"
+            columns: ["deposit_account_id"]
+            isOneToOne: false
+            referencedRelation: "v_period_comparison"
+            referencedColumns: ["account_id"]
+          },
+          {
             foreignKeyName: "payments_journal_entry_id_fkey"
             columns: ["journal_entry_id"]
             isOneToOne: false
@@ -1827,6 +2170,18 @@ export type Database = {
       }
     }
     Views: {
+      v_account_history: {
+        Row: {
+          code: string | null
+          fiscal_year_id: number | null
+          fiscal_year_name: string | null
+          name: string | null
+          period_balance: number | null
+          period_end: string | null
+          type: Database["public"]["Enums"]["account_type"] | null
+        }
+        Relationships: []
+      }
       v_attendance_summary: {
         Row: {
           attendance_pct: number | null
@@ -1837,12 +2192,128 @@ export type Database = {
         }
         Relationships: []
       }
+      v_balance_sheet: {
+        Row: {
+          as_of_date: string | null
+          balance: number | null
+          code: string | null
+          fiscal_year_id: number | null
+          fiscal_year_name: string | null
+          name: string | null
+          parent_account_id: number | null
+          type: Database["public"]["Enums"]["account_type"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accounts_parent_account_id_fkey"
+            columns: ["parent_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "accounts_parent_account_id_fkey"
+            columns: ["parent_account_id"]
+            isOneToOne: false
+            referencedRelation: "v_period_comparison"
+            referencedColumns: ["account_id"]
+          },
+        ]
+      }
+      v_cash_flow_statement: {
+        Row: {
+          activity_type: string | null
+          amount: number | null
+          code: string | null
+          end_date: string | null
+          fiscal_year_id: number | null
+          fiscal_year_name: string | null
+          name: string | null
+          start_date: string | null
+        }
+        Relationships: []
+      }
+      v_financial_summary: {
+        Row: {
+          end_date: string | null
+          fiscal_year_id: number | null
+          fiscal_year_name: string | null
+          start_date: string | null
+          total_assets: number | null
+          total_equity: number | null
+          total_expenses: number | null
+          total_income: number | null
+          total_liabilities: number | null
+        }
+        Relationships: []
+      }
+      v_income_statement: {
+        Row: {
+          balance: number | null
+          code: string | null
+          end_date: string | null
+          fiscal_year_id: number | null
+          fiscal_year_name: string | null
+          name: string | null
+          start_date: string | null
+          total_credit: number | null
+          total_debit: number | null
+          type: Database["public"]["Enums"]["account_type"] | null
+        }
+        Relationships: []
+      }
+      v_inventory_valuation: {
+        Row: {
+          accumulated_depreciation: number | null
+          book_value: number | null
+          category: Database["public"]["Enums"]["inventory_category"] | null
+          depreciation_years: number | null
+          id: number | null
+          last_movement_date: string | null
+          movements_count: number | null
+          name: string | null
+          purchase_date: string | null
+          quantity: number | null
+          status: Database["public"]["Enums"]["inventory_status"] | null
+          total_value: number | null
+          unit_cost: number | null
+        }
+        Relationships: []
+      }
+      v_inventory_valuation_history: {
+        Row: {
+          accumulated_depreciation: number | null
+          book_value: number | null
+          fiscal_year_id: number | null
+          fiscal_year_name: string | null
+          items_count: number | null
+          period_end: string | null
+          total_cost: number | null
+        }
+        Relationships: []
+      }
       v_member_balances: {
         Row: {
           balance_due: number | null
           member_id: number | null
           member_name: string | null
           ri_number: string | null
+        }
+        Relationships: []
+      }
+      v_period_comparison: {
+        Row: {
+          account_id: number | null
+          code: string | null
+          current_balance: number | null
+          end_date: string | null
+          fiscal_year_id: number | null
+          fiscal_year_name: string | null
+          name: string | null
+          previous_balance: number | null
+          type: Database["public"]["Enums"]["account_type"] | null
+          variance: number | null
+          variance_percent: number | null
         }
         Relationships: []
       }
@@ -1889,6 +2360,18 @@ export type Database = {
           role?: Database["public"]["Enums"]["app_role"] | null
           subject_email?: string | null
           subject_user_id?: string | null
+        }
+        Relationships: []
+      }
+      v_statement_of_equity: {
+        Row: {
+          amount: number | null
+          code: string | null
+          end_date: string | null
+          fiscal_year_id: number | null
+          fiscal_year_name: string | null
+          name: string | null
+          start_date: string | null
         }
         Relationships: []
       }
