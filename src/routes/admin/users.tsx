@@ -75,7 +75,7 @@ function AdminUsers() {
     setBusyId(userId);
     const { error } = await supabase
       .from("user_roles")
-      .update({ status: nextStatus, decided_at: new Date().toISOString(), decided_by: session?.user.id })
+      .update({ status: nextStatus, decided_at: new Date().toISOString(), decided_by: session?.user.id ?? null })
       .eq("id", roleRowId);
     setBusyId(null);
 
@@ -101,7 +101,7 @@ function AdminUsers() {
       role,
       status: "approved",
       decided_at: new Date().toISOString(),
-      decided_by: session?.user.id,
+      decided_by: session?.user.id ?? null,
     });
     setBusyId(null);
 

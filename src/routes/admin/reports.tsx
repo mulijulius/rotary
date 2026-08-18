@@ -133,7 +133,7 @@ function AdminFinancialReports() {
     }
     setFiscalYears(data);
     if (data.length > 0) {
-      setSelectedFiscalYear(data[0].id);
+      setSelectedFiscalYear(data[0]!.id);
     }
   }
 
@@ -143,10 +143,10 @@ function AdminFinancialReports() {
         supabase.from("v_trial_balance").select("*"),
         supabase.from("v_member_balances").select("*"),
         supabase.from("v_attendance_summary").select("*"),
-        supabase.from("v_income_statement").select("*").eq("fiscal_year_id", selectedFiscalYear),
-        supabase.from("v_balance_sheet").select("*").eq("fiscal_year_id", selectedFiscalYear),
-        supabase.from("v_cash_flow_statement").select("*").eq("fiscal_year_id", selectedFiscalYear),
-        supabase.from("v_financial_summary").select("*").eq("fiscal_year_id", selectedFiscalYear).single(),
+        supabase.from("v_income_statement").select("*").eq("fiscal_year_id", selectedFiscalYear!),
+        supabase.from("v_balance_sheet").select("*").eq("fiscal_year_id", selectedFiscalYear!),
+        supabase.from("v_cash_flow_statement").select("*").eq("fiscal_year_id", selectedFiscalYear!),
+        supabase.from("v_financial_summary").select("*").eq("fiscal_year_id", selectedFiscalYear!).single(),
       ]);
 
       if (trialResult.error) throw trialResult.error;
@@ -196,32 +196,6 @@ function AdminFinancialReports() {
     toast.success(`${filename} downloaded.`);
   }
 
-  function downloadCSV(data: any[], filename: string) {
-    if (!data || data.length === 0) {
-      toast.error("No data to export.");
-      return;
-    }
-
-    const headers = Object.keys(data[0]);
-    const csv = [
-      headers.join(","),
-      ...data.map((row) => headers.map((h) => {
-        const val = row[h];
-        if (typeof val === "string" && val.includes(",")) {
-          return `"${val.replace(/"/g, '""')}"`;
-        }
-        return val ?? "";
-      }).join(",")),
-    ].join("\n");
-
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-    toast.success(`${filename} downloaded.`);
-  }
 
   if (role && !["admin", "treasurer"].includes(role)) {
     return <div className="text-muted-foreground">You don't have access to financial reports.</div>;
