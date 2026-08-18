@@ -24,7 +24,7 @@ CREATE TABLE public.inventory_items (
   responsible_member_id   bigint REFERENCES public.members(id) ON DELETE SET NULL,
   depreciation_account_id int REFERENCES public.accounts(id),
   accumulated_depreciation numeric(14,2) NOT NULL DEFAULT 0,
-  book_value              numeric(14,2) GENERATED ALWAYS AS (total_value - accumulated_depreciation) STORED,
+  book_value              numeric(14,2) GENERATED ALWAYS AS ((quantity * unit_cost) - accumulated_depreciation) STORED,
   is_depreciable          boolean NOT NULL DEFAULT false,
   depreciation_years      int,
   created_by              bigint REFERENCES public.members(id),
