@@ -90,20 +90,67 @@ function AttendanceCheckIn() {
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        await videoRef.current.play().catch(() => undefined);
       }
       setError(null);
+      startDecodeLoop();
     } catch (err: any) {
       setError("Unable to access camera. Please check permissions.");
       console.error("Camera error:", err);
     }
   }
 
+  // Grabs frames off the live video into an offscreen canvas and hands the
+  // pixels to jsQR. Runs on requestAnimationFrame so it stops with the tab.
+  function startDecodeLoop() {
+    if (!canvasRef.current) canvasRef.current = document.createElement("canvas");
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+    const tick = () => {
+      const video = videoRef.current;
+      if (!video || !ctx || video.readyState !== video.HAVE_ENOUGH_DATA) {
+        rafRef.current = requestAnimationFrame(tick);
+        return;
+      }
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const result = jsQR(image.data, image.width, image.height, {
+        inversionAttempts: "dontInvert",
+      });
+
+      const token = result?.data?.trim();
+      if (token && token !== lastTokenRef.current && !inFlightRef.current) {
+        lastTokenRef.current = token;
+        inFlightRef.current = true;
+        void handleQRCodeScanned(token).finally(() => {
+          inFlightRef.current = false;
+          // Allow the same badge again after the success card clears.
+          setTimeout(() => {
+            lastTokenRef.current = null;
+          }, 3000);
+        });
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+
+    rafRef.current = requestAnimationFrame(tick);
+  }
+
   function stopCamera() {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    lastTokenRef.current = null;
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
   }
+
 
   async function handleQRCodeScanned(qrToken: string) {
     if (!selectedMeeting) {
