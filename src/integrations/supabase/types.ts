@@ -327,6 +327,151 @@ export type Database = {
         }
         Relationships: []
       }
+      email_campaigns: {
+        Row: {
+          body_html: string
+          created_at: string
+          created_by: number | null
+          id: number
+          recipient_type: Database["public"]["Enums"]["email_recipient_type"]
+          scheduled_at: string | null
+          sent_at: string | null
+          status: Database["public"]["Enums"]["email_status"]
+          subject: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body_html: string
+          created_at?: string
+          created_by?: number | null
+          id?: number
+          recipient_type: Database["public"]["Enums"]["email_recipient_type"]
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["email_status"]
+          subject: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          body_html?: string
+          created_at?: string
+          created_by?: number | null
+          id?: number
+          recipient_type?: Database["public"]["Enums"]["email_recipient_type"]
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["email_status"]
+          subject?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_campaigns_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_campaigns_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_attendance_summary"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "email_campaigns_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_member_balances"
+            referencedColumns: ["member_id"]
+          },
+        ]
+      }
+      email_logs: {
+        Row: {
+          campaign_id: number
+          clicked_at: string | null
+          created_at: string
+          error_message: string | null
+          id: number
+          member_id: number | null
+          opened_at: string | null
+          recipient_email: string
+          recipient_type: Database["public"]["Enums"]["email_recipient_type"]
+          sent_at: string | null
+          status: string
+          visitor_id: number | null
+        }
+        Insert: {
+          campaign_id: number
+          clicked_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: number
+          member_id?: number | null
+          opened_at?: string | null
+          recipient_email: string
+          recipient_type: Database["public"]["Enums"]["email_recipient_type"]
+          sent_at?: string | null
+          status?: string
+          visitor_id?: number | null
+        }
+        Update: {
+          campaign_id?: number
+          clicked_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: number
+          member_id?: number | null
+          opened_at?: string | null
+          recipient_email?: string
+          recipient_type?: Database["public"]["Enums"]["email_recipient_type"]
+          sent_at?: string | null
+          status?: string
+          visitor_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_logs_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "email_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_logs_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_logs_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "v_attendance_summary"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "email_logs_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "v_member_balances"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "email_logs_visitor_id_fkey"
+            columns: ["visitor_id"]
+            isOneToOne: false
+            referencedRelation: "visitors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fiscal_years: {
         Row: {
           end_date: string
@@ -1271,6 +1416,59 @@ export type Database = {
         }
         Relationships: []
       }
+      visitors: {
+        Row: {
+          created_at: string
+          email: string
+          first_name: string
+          id: number
+          interest: Database["public"]["Enums"]["visitor_interest"]
+          last_name: string
+          meeting_id: number | null
+          notes: string | null
+          organization: string | null
+          phone: string | null
+          updated_at: string
+          visited_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          first_name: string
+          id?: number
+          interest?: Database["public"]["Enums"]["visitor_interest"]
+          last_name: string
+          meeting_id?: number | null
+          notes?: string | null
+          organization?: string | null
+          phone?: string | null
+          updated_at?: string
+          visited_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          first_name?: string
+          id?: number
+          interest?: Database["public"]["Enums"]["visitor_interest"]
+          last_name?: string
+          meeting_id?: number | null
+          notes?: string | null
+          organization?: string | null
+          phone?: string | null
+          updated_at?: string
+          visited_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visitors_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       v_attendance_summary: {
@@ -1381,6 +1579,8 @@ export type Database = {
       attendance_status: "present" | "late" | "absent" | "excused"
       bill_status: "draft" | "received" | "partially_paid" | "paid" | "void"
       checkin_method: "qr_scan" | "manual"
+      email_recipient_type: "member" | "visitor" | "list"
+      email_status: "draft" | "scheduled" | "sent" | "failed"
       invoice_status: "draft" | "issued" | "partially_paid" | "paid" | "void"
       je_source:
         | "manual"
@@ -1403,6 +1603,12 @@ export type Database = {
       request_status: "pending" | "approved" | "denied"
       role_audit_action: "requested" | "approved" | "revoked"
       role_status: "pending" | "approved" | "revoked"
+      visitor_interest:
+        | "general"
+        | "membership"
+        | "projects"
+        | "events"
+        | "other"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1535,6 +1741,8 @@ export const Constants = {
       attendance_status: ["present", "late", "absent", "excused"],
       bill_status: ["draft", "received", "partially_paid", "paid", "void"],
       checkin_method: ["qr_scan", "manual"],
+      email_recipient_type: ["member", "visitor", "list"],
+      email_status: ["draft", "scheduled", "sent", "failed"],
       invoice_status: ["draft", "issued", "partially_paid", "paid", "void"],
       je_source: [
         "manual",
@@ -1559,6 +1767,13 @@ export const Constants = {
       request_status: ["pending", "approved", "denied"],
       role_audit_action: ["requested", "approved", "revoked"],
       role_status: ["pending", "approved", "revoked"],
+      visitor_interest: [
+        "general",
+        "membership",
+        "projects",
+        "events",
+        "other",
+      ],
     },
   },
 } as const
