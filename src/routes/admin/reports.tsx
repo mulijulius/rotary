@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { FileText, Download } from "lucide-react";
+import { FileText, Download, TrendingUp, Calendar } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -21,6 +21,14 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Card } from "@/components/ui/card";
 
 export const Route = createFileRoute("/admin/reports")({
   component: AdminFinancialReports,
@@ -50,35 +58,142 @@ type AttendanceSummary = {
   attendance_pct: number;
 };
 
+type IncomeStatementRow = {
+  fiscal_year_id: number;
+  fiscal_year_name: string;
+  code: string;
+  name: string;
+  type: string;
+  total_debit: number;
+  total_credit: number;
+  balance: number;
+};
+
+type BalanceSheetRow = {
+  fiscal_year_id: number;
+  fiscal_year_name: string;
+  as_of_date: string;
+  code: string;
+  name: string;
+  type: string;
+  balance: number;
+};
+
+type CashFlowRow = {
+  fiscal_year_id: number;
+  fiscal_year_name: string;
+  activity_type: string;
+  code: string;
+  name: string;
+  amount: number;
+};
+
+type FinancialSummary = {
+  fiscal_year_id: number;
+  fiscal_year_name: string;
+  total_income: number;
+  total_expenses: number;
+  total_assets: number;
+  total_liabilities: number;
+  total_equity: number;
+};
+
+type FiscalYear = Database["public"]["Tables"]["fiscal_years"]["Row"];
+
 function AdminFinancialReports() {
   const { role } = useAuth();
+  const [fiscalYears, setFiscalYears] = useState<FiscalYear[]>([]);
+  const [selectedFiscalYear, setSelectedFiscalYear] = useState<number | null>(null);
   const [trialBalance, setTrialBalance] = useState<TrialBalance[] | null>(null);
   const [memberBalances, setMemberBalances] = useState<MemberBalance[] | null>(null);
   const [attendanceSummary, setAttendanceSummary] = useState<AttendanceSummary[] | null>(null);
+  const [incomeStatement, setIncomeStatement] = useState<IncomeStatementRow[] | null>(null);
+  const [balanceSheet, setBalanceSheet] = useState<BalanceSheetRow[] | null>(null);
+  const [cashFlow, setCashFlow] = useState<CashFlowRow[] | null>(null);
+  const [financialSummary, setFinancialSummary] = useState<FinancialSummary | null>(null);
 
   useEffect(() => {
-    loadReports();
+    loadFiscalYears();
   }, []);
+
+  useEffect(() => {
+    if (selectedFiscalYear) {
+      loadReports();
+    }
+  }, [selectedFiscalYear]);
+
+  async function loadFiscalYears() {
+    const { data, error } = await supabase
+      .from("fiscal_years")
+      .select("*")
+      .order("end_date", { ascending: false });
+    if (error) {
+      console.error("Failed to load fiscal years", error);
+      return;
+    }
+    setFiscalYears(data);
+    if (data.length > 0) {
+      setSelectedFiscalYear(data[0].id);
+    }
+  }
 
   async function loadReports() {
     try {
-      const [trialResult, memberResult, attendanceResult] = await Promise.all([
+      const [trialResult, memberResult, attendanceResult, incomeResult, balanceResult, cashFlowResult, summaryResult] = await Promise.all([
         supabase.from("v_trial_balance").select("*"),
         supabase.from("v_member_balances").select("*"),
         supabase.from("v_attendance_summary").select("*"),
+        supabase.from("v_income_statement").select("*").eq("fiscal_year_id", selectedFiscalYear),
+        supabase.from("v_balance_sheet").select("*").eq("fiscal_year_id", selectedFiscalYear),
+        supabase.from("v_cash_flow_statement").select("*").eq("fiscal_year_id", selectedFiscalYear),
+        supabase.from("v_financial_summary").select("*").eq("fiscal_year_id", selectedFiscalYear).single(),
       ]);
 
       if (trialResult.error) throw trialResult.error;
       if (memberResult.error) throw memberResult.error;
       if (attendanceResult.error) throw attendanceResult.error;
+      if (incomeResult.error) throw incomeResult.error;
+      if (balanceResult.error) throw balanceResult.error;
+      if (cashFlowResult.error) throw cashFlowResult.error;
 
       setTrialBalance(trialResult.data as any);
       setMemberBalances(memberResult.data as any);
       setAttendanceSummary(attendanceResult.data as any);
+      setIncomeStatement(incomeResult.data as any);
+      setBalanceSheet(balanceResult.data as any);
+      setCashFlow(cashFlowResult.data as any);
+      setFinancialSummary(summaryResult.data as any);
     } catch (err) {
       console.error("[admin/reports] failed to load", err);
       toast.error("Couldn't load reports.");
     }
+  }
+
+  function downloadCSV(data: any[], filename: string) {
+    if (!data || data.length === 0) {
+      toast.error("No data to export.");
+      return;
+    }
+
+    const headers = Object.keys(data[0]);
+    const csv = [
+      headers.join(","),
+      ...data.map((row) => headers.map((h) => {
+        const val = row[h];
+        if (typeof val === "string" && val.includes(",")) {
+          return `"${val.replace(/"/g, '""')}"`;
+        }
+        return val ?? "";
+      }).join(",")),
+    ].join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    toast.success(`${filename} downloaded.`);
   }
 
   function downloadCSV(data: any[], filename: string) {
@@ -117,17 +232,230 @@ function AdminFinancialReports() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Financial Reports</h1>
-          <p className="mt-1 text-sm text-muted-foreground">View and export financial statements and summaries.</p>
+          <p className="mt-1 text-sm text-muted-foreground">View comprehensive financial statements and summaries.</p>
         </div>
       </div>
 
+      {/* Financial Summary Cards */}
+      {financialSummary && (
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-5 gap-4">
+          <Card className="p-4">
+            <p className="text-sm text-muted-foreground">Total Income</p>
+            <p className="text-2xl font-bold text-green-600 mt-1">
+              {parseFloat(financialSummary.total_income.toString()).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+          </Card>
+          <Card className="p-4">
+            <p className="text-sm text-muted-foreground">Total Expenses</p>
+            <p className="text-2xl font-bold text-red-600 mt-1">
+              {parseFloat(financialSummary.total_expenses.toString()).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+          </Card>
+          <Card className="p-4">
+            <p className="text-sm text-muted-foreground">Total Assets</p>
+            <p className="text-2xl font-bold text-blue-600 mt-1">
+              {parseFloat(financialSummary.total_assets.toString()).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+          </Card>
+          <Card className="p-4">
+            <p className="text-sm text-muted-foreground">Total Liabilities</p>
+            <p className="text-2xl font-bold text-orange-600 mt-1">
+              {parseFloat(financialSummary.total_liabilities.toString()).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+          </Card>
+          <Card className="p-4">
+            <p className="text-sm text-muted-foreground">Total Equity</p>
+            <p className="text-2xl font-bold text-purple-600 mt-1">
+              {parseFloat(financialSummary.total_equity.toString()).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+          </Card>
+        </div>
+      )}
+
+      <div className="mt-6 flex gap-2">
+        <Select value={selectedFiscalYear?.toString() || ""} onValueChange={(val) => setSelectedFiscalYear(parseInt(val))}>
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="Select Fiscal Year" />
+          </SelectTrigger>
+          <SelectContent>
+            {fiscalYears.map((fy) => (
+              <SelectItem key={fy.id} value={fy.id.toString()}>
+                {fy.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       <div className="mt-6">
-        <Tabs defaultValue="trial-balance" className="w-full">
-          <TabsList>
+        <Tabs defaultValue="income-statement" className="w-full">
+          <TabsList className="grid w-full grid-cols-7">
+            <TabsTrigger value="income-statement">Income Statement</TabsTrigger>
+            <TabsTrigger value="balance-sheet">Balance Sheet</TabsTrigger>
+            <TabsTrigger value="cash-flow">Cash Flow</TabsTrigger>
             <TabsTrigger value="trial-balance">Trial Balance</TabsTrigger>
             <TabsTrigger value="member-balances">Member Balances</TabsTrigger>
-            <TabsTrigger value="attendance">Attendance Summary</TabsTrigger>
+            <TabsTrigger value="attendance">Attendance</TabsTrigger>
           </TabsList>
+
+          {/* Income Statement */}
+          <TabsContent value="income-statement" className="space-y-4">
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-2"
+                onClick={() => downloadCSV(incomeStatement || [], "income-statement.csv")}
+              >
+                <Download className="h-4 w-4" />
+                Export CSV
+              </Button>
+            </div>
+            <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-card)]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Code</TableHead>
+                    <TableHead>Account Name</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {incomeStatement === null ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
+                        Loading…
+                      </TableCell>
+                    </TableRow>
+                  ) : incomeStatement.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
+                        No data available
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    incomeStatement.map((row) => (
+                      <TableRow key={`${row.code}-${row.type}`}>
+                        <TableCell className="font-mono font-semibold">{row.code}</TableCell>
+                        <TableCell className="font-medium">{row.name}</TableCell>
+                        <TableCell className="text-sm capitalize">{row.type}</TableCell>
+                        <TableCell className="text-right font-mono font-semibold">
+                          {parseFloat(row.balance.toString()).toFixed(2)}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </TabsContent>
+
+          {/* Balance Sheet */}
+          <TabsContent value="balance-sheet" className="space-y-4">
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-2"
+                onClick={() => downloadCSV(balanceSheet || [], "balance-sheet.csv")}
+              >
+                <Download className="h-4 w-4" />
+                Export CSV
+              </Button>
+            </div>
+            <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-card)]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Code</TableHead>
+                    <TableHead>Account Name</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead className="text-right">Balance</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {balanceSheet === null ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
+                        Loading…
+                      </TableCell>
+                    </TableRow>
+                  ) : balanceSheet.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
+                        No data available
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    balanceSheet.map((row) => (
+                      <TableRow key={`${row.code}-${row.type}`}>
+                        <TableCell className="font-mono font-semibold">{row.code}</TableCell>
+                        <TableCell className="font-medium">{row.name}</TableCell>
+                        <TableCell className="text-sm capitalize">{row.type}</TableCell>
+                        <TableCell className="text-right font-mono font-semibold">
+                          {parseFloat(row.balance.toString()).toFixed(2)}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </TabsContent>
+
+          {/* Cash Flow Statement */}
+          <TabsContent value="cash-flow" className="space-y-4">
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-2"
+                onClick={() => downloadCSV(cashFlow || [], "cash-flow.csv")}
+              >
+                <Download className="h-4 w-4" />
+                Export CSV
+              </Button>
+            </div>
+            <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-card)]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Activity Type</TableHead>
+                    <TableHead>Code</TableHead>
+                    <TableHead>Account Name</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {cashFlow === null ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
+                        Loading…
+                      </TableCell>
+                    </TableRow>
+                  ) : cashFlow.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
+                        No data available
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    cashFlow.map((row, idx) => (
+                      <TableRow key={idx}>
+                        <TableCell className="text-sm font-medium capitalize">{row.activity_type}</TableCell>
+                        <TableCell className="font-mono text-sm">{row.code}</TableCell>
+                        <TableCell className="font-medium">{row.name}</TableCell>
+                        <TableCell className="text-right font-mono font-semibold">
+                          {parseFloat(row.amount.toString()).toFixed(2)}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </TabsContent>
 
           <TabsContent value="trial-balance" className="space-y-4">
             <div className="flex justify-end">
