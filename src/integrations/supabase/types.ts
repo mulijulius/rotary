@@ -692,6 +692,67 @@ export type Database = {
           },
         ]
       }
+      leave_requests: {
+        Row: {
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          end_date: string | null
+          id: number
+          member_id: number
+          reason: string
+          requested_at: string
+          start_date: string
+          status: Database["public"]["Enums"]["request_status"]
+        }
+        Insert: {
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          end_date?: string | null
+          id?: number
+          member_id: number
+          reason: string
+          requested_at?: string
+          start_date: string
+          status?: Database["public"]["Enums"]["request_status"]
+        }
+        Update: {
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          end_date?: string | null
+          id?: number
+          member_id?: number
+          reason?: string
+          requested_at?: string
+          start_date?: string
+          status?: Database["public"]["Enums"]["request_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leave_requests_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "v_attendance_summary"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "leave_requests_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "v_member_balances"
+            referencedColumns: ["member_id"]
+          },
+        ]
+      }
       meetings: {
         Row: {
           checkin_closes_at: string | null
@@ -969,6 +1030,61 @@ export type Database = {
           },
         ]
       }
+      profile_edit_requests: {
+        Row: {
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          id: number
+          member_id: number
+          requested_at: string
+          requested_changes: Json
+          status: Database["public"]["Enums"]["request_status"]
+        }
+        Insert: {
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          id?: number
+          member_id: number
+          requested_at?: string
+          requested_changes: Json
+          status?: Database["public"]["Enums"]["request_status"]
+        }
+        Update: {
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          id?: number
+          member_id?: number
+          requested_at?: string
+          requested_changes?: Json
+          status?: Database["public"]["Enums"]["request_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_edit_requests_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_edit_requests_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "v_attendance_summary"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "profile_edit_requests_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "v_member_balances"
+            referencedColumns: ["member_id"]
+          },
+        ]
+      }
       project_photos: {
         Row: {
           caption: string | null
@@ -1060,6 +1176,50 @@ export type Database = {
           },
         ]
       }
+      role_decisions: {
+        Row: {
+          action: Database["public"]["Enums"]["role_audit_action"]
+          actor_email: string | null
+          actor_user_id: string | null
+          decided_at: string
+          id: number
+          role: Database["public"]["Enums"]["app_role"]
+          subject_email: string | null
+          subject_user_id: string
+          user_role_id: string
+        }
+        Insert: {
+          action: Database["public"]["Enums"]["role_audit_action"]
+          actor_email?: string | null
+          actor_user_id?: string | null
+          decided_at?: string
+          id?: number
+          role: Database["public"]["Enums"]["app_role"]
+          subject_email?: string | null
+          subject_user_id: string
+          user_role_id: string
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["role_audit_action"]
+          actor_email?: string | null
+          actor_user_id?: string | null
+          decided_at?: string
+          id?: number
+          role?: Database["public"]["Enums"]["app_role"]
+          subject_email?: string | null
+          subject_user_id?: string
+          user_role_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_decisions_user_role_id_fkey"
+            columns: ["user_role_id"]
+            isOneToOne: false
+            referencedRelation: "user_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           decided_at: string | null
@@ -1145,6 +1305,39 @@ export type Database = {
         }
         Relationships: []
       }
+      v_role_audit: {
+        Row: {
+          action: Database["public"]["Enums"]["role_audit_action"] | null
+          actor_email: string | null
+          actor_user_id: string | null
+          decided_at: string | null
+          id: number | null
+          role: Database["public"]["Enums"]["app_role"] | null
+          subject_email: string | null
+          subject_user_id: string | null
+        }
+        Insert: {
+          action?: Database["public"]["Enums"]["role_audit_action"] | null
+          actor_email?: string | null
+          actor_user_id?: string | null
+          decided_at?: string | null
+          id?: number | null
+          role?: Database["public"]["Enums"]["app_role"] | null
+          subject_email?: string | null
+          subject_user_id?: string | null
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["role_audit_action"] | null
+          actor_email?: string | null
+          actor_user_id?: string | null
+          decided_at?: string | null
+          id?: number | null
+          role?: Database["public"]["Enums"]["app_role"] | null
+          subject_email?: string | null
+          subject_user_id?: string | null
+        }
+        Relationships: []
+      }
       v_trial_balance: {
         Row: {
           balance: number | null
@@ -1158,11 +1351,26 @@ export type Database = {
       }
     }
     Functions: {
+      fn_decide_leave_request: {
+        Args: { _approve: boolean; _note: string; _request_id: number }
+        Returns: undefined
+      }
+      fn_decide_profile_edit_request: {
+        Args: { _approve: boolean; _note: string; _request_id: number }
+        Returns: undefined
+      }
+      fn_reissue_qr_token: { Args: { _member_id: number }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_admin_or_editor: { Args: { _user_id: string }; Returns: boolean }
+      is_admin_or_secretary: { Args: { _user_id: string }; Returns: boolean }
+      is_admin_secretary_or_editor: {
+        Args: { _user_id: string }
         Returns: boolean
       }
       is_officer: { Args: { _user_id: string }; Returns: boolean }
@@ -1192,6 +1400,8 @@ export type Database = {
       normal_side: "debit" | "credit"
       payment_method: "cash" | "mpesa" | "bank_transfer" | "cheque" | "card"
       project_status: "planned" | "ongoing" | "completed"
+      request_status: "pending" | "approved" | "denied"
+      role_audit_action: "requested" | "approved" | "revoked"
       role_status: "pending" | "approved" | "revoked"
     }
     CompositeTypes: {
@@ -1346,6 +1556,8 @@ export const Constants = {
       normal_side: ["debit", "credit"],
       payment_method: ["cash", "mpesa", "bank_transfer", "cheque", "card"],
       project_status: ["planned", "ongoing", "completed"],
+      request_status: ["pending", "approved", "denied"],
+      role_audit_action: ["requested", "approved", "revoked"],
       role_status: ["pending", "approved", "revoked"],
     },
   },
