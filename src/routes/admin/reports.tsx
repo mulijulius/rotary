@@ -457,6 +457,7 @@ function AdminFinancialReports() {
             </div>
           </TabsContent>
 
+          {/* Trial Balance */}
           <TabsContent value="trial-balance" className="space-y-4">
             <div className="flex justify-end">
               <Button
@@ -489,6 +490,13 @@ function AdminFinancialReports() {
                       </TableCell>
                     </TableRow>
                   )}
+                  {trialBalance && trialBalance.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
+                        No data available
+                      </TableCell>
+                    </TableRow>
+                  )}
                   {trialBalance?.map((row) => (
                     <TableRow key={row.code}>
                       <TableCell className="font-mono font-semibold">{row.code}</TableCell>
@@ -510,6 +518,7 @@ function AdminFinancialReports() {
             </div>
           </TabsContent>
 
+          {/* Member Balances */}
           <TabsContent value="member-balances" className="space-y-4">
             <div className="flex justify-end">
               <Button
@@ -539,6 +548,13 @@ function AdminFinancialReports() {
                       </TableCell>
                     </TableRow>
                   )}
+                  {memberBalances && memberBalances.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={3} className="py-10 text-center text-muted-foreground">
+                        No data available
+                      </TableCell>
+                    </TableRow>
+                  )}
                   {memberBalances?.map((row) => (
                     <TableRow key={row.member_id}>
                       <TableCell className="font-semibold">{row.member_name}</TableCell>
@@ -553,6 +569,7 @@ function AdminFinancialReports() {
             </div>
           </TabsContent>
 
+          {/* Attendance Summary */}
           <TabsContent value="attendance" className="space-y-4">
             <div className="flex justify-end">
               <Button
@@ -580,6 +597,13 @@ function AdminFinancialReports() {
                     <TableRow>
                       <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
                         Loading…
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {attendanceSummary && attendanceSummary.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
+                        No data available
                       </TableCell>
                     </TableRow>
                   )}

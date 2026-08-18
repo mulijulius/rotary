@@ -19,15 +19,24 @@ type NavItem = { to: string; label: string };
 const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
   admin: [
     { to: "/admin", label: "Overview" },
+    // Membership Module
     { to: "/admin/members", label: "Members" },
+    { to: "/admin/visitors", label: "Visitors" },
     { to: "/admin/meetings", label: "Meetings" },
     { to: "/admin/board-positions", label: "Board Positions" },
+    // Accounting Module
     { to: "/admin/fiscal-years", label: "Fiscal Years" },
     { to: "/admin/accounts", label: "Chart of Accounts" },
     { to: "/admin/journal-entries", label: "Journal Entries" },
     { to: "/admin/invoices", label: "Invoices" },
     { to: "/admin/bills", label: "Bills" },
+    { to: "/admin/reports", label: "Financial Reports" },
+    // Inventory Module
+    { to: "/admin/inventory", label: "Inventory" },
+    // Communications
+    { to: "/admin/email-campaigns", label: "Email Campaigns" },
     { to: "/admin/messages", label: "Messages" },
+    // Administration
     { to: "/admin/users", label: "Users & Roles" },
     { to: "/admin/audit", label: "Role Audit Trail" },
   ],
@@ -39,14 +48,17 @@ const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
     { to: "/admin/invoices", label: "Invoices" },
     { to: "/admin/bills", label: "Bills" },
     { to: "/admin/reports", label: "Financial Reports" },
+    { to: "/admin/inventory", label: "Inventory" },
     { to: "/admin/members", label: "Members" },
     { to: "/admin/messages", label: "Messages" },
   ],
   secretary: [
     { to: "/admin", label: "Overview" },
     { to: "/admin/members", label: "Members" },
+    { to: "/admin/visitors", label: "Visitors" },
     { to: "/admin/meetings", label: "Meetings" },
     { to: "/admin/board-positions", label: "Board Positions" },
+    { to: "/admin/email-campaigns", label: "Email Campaigns" },
     { to: "/admin/messages", label: "Messages" },
   ],
   editor: [
