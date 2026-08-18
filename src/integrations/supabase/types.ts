@@ -327,6 +327,61 @@ export type Database = {
         }
         Relationships: []
       }
+      depreciation_schedules: {
+        Row: {
+          accumulated_to_date: number
+          book_value_at_end: number
+          created_at: string
+          depreciation_amount: number
+          fiscal_year_id: number
+          id: number
+          inventory_item_id: number
+          journal_entry_id: number | null
+        }
+        Insert: {
+          accumulated_to_date: number
+          book_value_at_end: number
+          created_at?: string
+          depreciation_amount: number
+          fiscal_year_id: number
+          id?: number
+          inventory_item_id: number
+          journal_entry_id?: number | null
+        }
+        Update: {
+          accumulated_to_date?: number
+          book_value_at_end?: number
+          created_at?: string
+          depreciation_amount?: number
+          fiscal_year_id?: number
+          id?: number
+          inventory_item_id?: number
+          journal_entry_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "depreciation_schedules_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_years"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "depreciation_schedules_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "depreciation_schedules_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_campaigns: {
         Row: {
           body_html: string
@@ -564,6 +619,307 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "gallery_albums"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_counts: {
+        Row: {
+          count_date: string
+          counted_by: number
+          counted_quantity: number
+          created_at: string
+          id: number
+          inventory_item_id: number
+          notes: string | null
+          recorded_quantity: number
+          variance: number | null
+          verified_by: number | null
+        }
+        Insert: {
+          count_date?: string
+          counted_by: number
+          counted_quantity: number
+          created_at?: string
+          id?: number
+          inventory_item_id: number
+          notes?: string | null
+          recorded_quantity: number
+          variance?: number | null
+          verified_by?: number | null
+        }
+        Update: {
+          count_date?: string
+          counted_by?: number
+          counted_quantity?: number
+          created_at?: string
+          id?: number
+          inventory_item_id?: number
+          notes?: string | null
+          recorded_quantity?: number
+          variance?: number | null
+          verified_by?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_counts_counted_by_fkey"
+            columns: ["counted_by"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_counts_counted_by_fkey"
+            columns: ["counted_by"]
+            isOneToOne: false
+            referencedRelation: "v_attendance_summary"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "inventory_counts_counted_by_fkey"
+            columns: ["counted_by"]
+            isOneToOne: false
+            referencedRelation: "v_member_balances"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "inventory_counts_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_counts_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_counts_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "v_attendance_summary"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "inventory_counts_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "v_member_balances"
+            referencedColumns: ["member_id"]
+          },
+        ]
+      }
+      inventory_items: {
+        Row: {
+          accumulated_depreciation: number
+          barcode: string | null
+          book_value: number | null
+          category: Database["public"]["Enums"]["inventory_category"]
+          created_at: string
+          created_by: number | null
+          depreciation_account_id: number | null
+          depreciation_years: number | null
+          description: string | null
+          id: number
+          is_depreciable: boolean
+          location: string | null
+          name: string
+          purchase_date: string | null
+          quantity: number
+          responsible_member_id: number | null
+          serial_number: string | null
+          status: Database["public"]["Enums"]["inventory_status"]
+          total_value: number | null
+          unit_cost: number
+          unit_of_measure: string | null
+          updated_at: string
+          warranty_expiry: string | null
+        }
+        Insert: {
+          accumulated_depreciation?: number
+          barcode?: string | null
+          book_value?: number | null
+          category: Database["public"]["Enums"]["inventory_category"]
+          created_at?: string
+          created_by?: number | null
+          depreciation_account_id?: number | null
+          depreciation_years?: number | null
+          description?: string | null
+          id?: number
+          is_depreciable?: boolean
+          location?: string | null
+          name: string
+          purchase_date?: string | null
+          quantity?: number
+          responsible_member_id?: number | null
+          serial_number?: string | null
+          status?: Database["public"]["Enums"]["inventory_status"]
+          total_value?: number | null
+          unit_cost: number
+          unit_of_measure?: string | null
+          updated_at?: string
+          warranty_expiry?: string | null
+        }
+        Update: {
+          accumulated_depreciation?: number
+          barcode?: string | null
+          book_value?: number | null
+          category?: Database["public"]["Enums"]["inventory_category"]
+          created_at?: string
+          created_by?: number | null
+          depreciation_account_id?: number | null
+          depreciation_years?: number | null
+          description?: string | null
+          id?: number
+          is_depreciable?: boolean
+          location?: string | null
+          name?: string
+          purchase_date?: string | null
+          quantity?: number
+          responsible_member_id?: number | null
+          serial_number?: string | null
+          status?: Database["public"]["Enums"]["inventory_status"]
+          total_value?: number | null
+          unit_cost?: number
+          unit_of_measure?: string | null
+          updated_at?: string
+          warranty_expiry?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_attendance_summary"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "inventory_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "v_member_balances"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "inventory_items_depreciation_account_id_fkey"
+            columns: ["depreciation_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_responsible_member_id_fkey"
+            columns: ["responsible_member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_responsible_member_id_fkey"
+            columns: ["responsible_member_id"]
+            isOneToOne: false
+            referencedRelation: "v_attendance_summary"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "inventory_items_responsible_member_id_fkey"
+            columns: ["responsible_member_id"]
+            isOneToOne: false
+            referencedRelation: "v_member_balances"
+            referencedColumns: ["member_id"]
+          },
+        ]
+      }
+      inventory_movements: {
+        Row: {
+          created_at: string
+          from_location: string | null
+          id: number
+          inventory_item_id: number
+          journal_entry_id: number | null
+          movement_date: string
+          movement_type: Database["public"]["Enums"]["stock_movement_type"]
+          new_quantity: number
+          notes: string | null
+          old_quantity: number
+          quantity_changed: number
+          recorded_by: number
+          to_location: string | null
+        }
+        Insert: {
+          created_at?: string
+          from_location?: string | null
+          id?: number
+          inventory_item_id: number
+          journal_entry_id?: number | null
+          movement_date?: string
+          movement_type: Database["public"]["Enums"]["stock_movement_type"]
+          new_quantity: number
+          notes?: string | null
+          old_quantity: number
+          quantity_changed: number
+          recorded_by: number
+          to_location?: string | null
+        }
+        Update: {
+          created_at?: string
+          from_location?: string | null
+          id?: number
+          inventory_item_id?: number
+          journal_entry_id?: number | null
+          movement_date?: string
+          movement_type?: Database["public"]["Enums"]["stock_movement_type"]
+          new_quantity?: number
+          notes?: string | null
+          old_quantity?: number
+          quantity_changed?: number
+          recorded_by?: number
+          to_location?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_movements_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "v_attendance_summary"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "v_member_balances"
+            referencedColumns: ["member_id"]
           },
         ]
       }
@@ -1549,6 +1905,7 @@ export type Database = {
       }
     }
     Functions: {
+      fn_calculate_depreciation: { Args: never; Returns: undefined }
       fn_decide_leave_request: {
         Args: { _approve: boolean; _note: string; _request_id: number }
         Returns: undefined
@@ -1581,6 +1938,15 @@ export type Database = {
       checkin_method: "qr_scan" | "manual"
       email_recipient_type: "member" | "visitor" | "list"
       email_status: "draft" | "scheduled" | "sent" | "failed"
+      inventory_category:
+        | "equipment"
+        | "furniture"
+        | "technology"
+        | "supplies"
+        | "vehicle"
+        | "building"
+        | "other"
+      inventory_status: "active" | "damaged" | "lost" | "sold" | "disposed"
       invoice_status: "draft" | "issued" | "partially_paid" | "paid" | "void"
       je_source:
         | "manual"
@@ -1603,6 +1969,14 @@ export type Database = {
       request_status: "pending" | "approved" | "denied"
       role_audit_action: "requested" | "approved" | "revoked"
       role_status: "pending" | "approved" | "revoked"
+      stock_movement_type:
+        | "purchase"
+        | "transfer"
+        | "usage"
+        | "loss"
+        | "repair"
+        | "depreciation"
+        | "disposal"
       visitor_interest:
         | "general"
         | "membership"
@@ -1743,6 +2117,16 @@ export const Constants = {
       checkin_method: ["qr_scan", "manual"],
       email_recipient_type: ["member", "visitor", "list"],
       email_status: ["draft", "scheduled", "sent", "failed"],
+      inventory_category: [
+        "equipment",
+        "furniture",
+        "technology",
+        "supplies",
+        "vehicle",
+        "building",
+        "other",
+      ],
+      inventory_status: ["active", "damaged", "lost", "sold", "disposed"],
       invoice_status: ["draft", "issued", "partially_paid", "paid", "void"],
       je_source: [
         "manual",
@@ -1767,6 +2151,15 @@ export const Constants = {
       request_status: ["pending", "approved", "denied"],
       role_audit_action: ["requested", "approved", "revoked"],
       role_status: ["pending", "approved", "revoked"],
+      stock_movement_type: [
+        "purchase",
+        "transfer",
+        "usage",
+        "loss",
+        "repair",
+        "depreciation",
+        "disposal",
+      ],
       visitor_interest: [
         "general",
         "membership",
