@@ -184,7 +184,7 @@ function AdminEmailCampaigns() {
     }
   }
 
-  async function handleDeleteCampaign(id: bigint) {
+  async function handleDeleteCampaign(id: number) {
     if (!confirm("Are you sure you want to delete this campaign?")) return;
     try {
       const { error } = await supabase.from("email_campaigns").delete().eq("id", id);

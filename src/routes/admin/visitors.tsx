@@ -196,7 +196,7 @@ function AdminVisitors() {
     }
   }
 
-  async function handleDeleteVisitor(id: bigint) {
+  async function handleDeleteVisitor(id: number) {
     if (!confirm("Are you sure you want to delete this visitor?")) return;
     try {
       const { error } = await supabase.from("visitors").delete().eq("id", id);

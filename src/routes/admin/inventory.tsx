@@ -286,7 +286,7 @@ function AdminInventory() {
     }
   }
 
-  async function handleDeleteItem(id: bigint) {
+  async function handleDeleteItem(id: number) {
     if (!confirm("Are you sure you want to delete this item?")) return;
     try {
       const { error } = await supabase.from("inventory_items").delete().eq("id", id);
