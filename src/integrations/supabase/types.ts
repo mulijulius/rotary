@@ -1062,18 +1062,30 @@ export type Database = {
       }
       user_roles: {
         Row: {
+          decided_at: string | null
+          decided_by: string | null
           id: string
+          requested_at: string
           role: Database["public"]["Enums"]["app_role"]
+          status: Database["public"]["Enums"]["role_status"]
           user_id: string
         }
         Insert: {
+          decided_at?: string | null
+          decided_by?: string | null
           id?: string
+          requested_at?: string
           role: Database["public"]["Enums"]["app_role"]
+          status?: Database["public"]["Enums"]["role_status"]
           user_id: string
         }
         Update: {
+          decided_at?: string | null
+          decided_by?: string | null
           id?: string
+          requested_at?: string
           role?: Database["public"]["Enums"]["app_role"]
+          status?: Database["public"]["Enums"]["role_status"]
           user_id?: string
         }
         Relationships: []
@@ -1180,6 +1192,7 @@ export type Database = {
       normal_side: "debit" | "credit"
       payment_method: "cash" | "mpesa" | "bank_transfer" | "cheque" | "card"
       project_status: "planned" | "ongoing" | "completed"
+      role_status: "pending" | "approved" | "revoked"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1333,6 +1346,7 @@ export const Constants = {
       normal_side: ["debit", "credit"],
       payment_method: ["cash", "mpesa", "bank_transfer", "cheque", "card"],
       project_status: ["planned", "ongoing", "completed"],
+      role_status: ["pending", "approved", "revoked"],
     },
   },
 } as const
