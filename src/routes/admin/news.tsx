@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { Plus, Edit2, Trash2, Zap } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Plus, Edit2, Trash2, Zap, ImagePlus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { uploadClubPhoto } from "@/lib/content-photos";
 import type { Database } from "@/integrations/supabase/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,10 @@ function AdminNews() {
     cover_image_url: "",
     published: false,
   });
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const coverInputRef = useRef<HTMLInputElement>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -88,12 +93,40 @@ function AdminNews() {
         published: false,
       });
     }
+    setCoverFile(null);
+    setCoverPreview(null);
     setOpenDialog(true);
   }
 
   function handleCloseDialog() {
     setOpenDialog(false);
     setEditingArticle(null);
+    setCoverFile(null);
+    setCoverPreview(null);
+  }
+
+  function handleCoverSelected(file: File | null) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please choose an image file.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be under 5MB.");
+      return;
+    }
+    setCoverFile(file);
+    setCoverPreview(URL.createObjectURL(file));
+  }
+
+  async function uploadCoverIfNeeded(articleId: number): Promise<string | null> {
+    if (!coverFile) return formData.cover_image_url || null;
+    setUploadingCover(true);
+    try {
+      return await uploadClubPhoto(`news/${articleId}`, coverFile);
+    } finally {
+      setUploadingCover(false);
+    }
   }
 
   async function handleSaveArticle() {
@@ -105,6 +138,7 @@ function AdminNews() {
     setBusyId("save");
     try {
       if (editingArticle) {
+        const coverUrl = await uploadCoverIfNeeded(editingArticle.id);
         const { error } = await supabase
           .from("news_articles")
           .update({
@@ -112,7 +146,7 @@ function AdminNews() {
             slug: formData.slug,
             excerpt: formData.excerpt || null,
             body: formData.body,
-            cover_image_url: formData.cover_image_url || null,
+            cover_image_url: coverUrl,
             published: formData.published,
             published_at: formData.published ? new Date().toISOString() : null,
           })
@@ -120,16 +154,31 @@ function AdminNews() {
         if (error) throw error;
         toast.success("Article updated.");
       } else {
-        const { error } = await supabase.from("news_articles").insert({
-          title: formData.title,
-          slug: formData.slug,
-          excerpt: formData.excerpt || null,
-          body: formData.body,
-          cover_image_url: formData.cover_image_url || null,
-          published: formData.published,
-          published_at: formData.published ? new Date().toISOString() : null,
-        });
+        const { data: inserted, error } = await supabase
+          .from("news_articles")
+          .insert({
+            title: formData.title,
+            slug: formData.slug,
+            excerpt: formData.excerpt || null,
+            body: formData.body,
+            cover_image_url: null,
+            published: formData.published,
+            published_at: formData.published ? new Date().toISOString() : null,
+          })
+          .select()
+          .single();
         if (error) throw error;
+
+        if (coverFile && inserted) {
+          const coverUrl = await uploadCoverIfNeeded(inserted.id);
+          if (coverUrl) {
+            const { error: coverErr } = await supabase
+              .from("news_articles")
+              .update({ cover_image_url: coverUrl })
+              .eq("id", inserted.id);
+            if (coverErr) console.error("[admin/news] cover attach error", coverErr);
+          }
+        }
         toast.success("Article created.");
       }
       handleCloseDialog();
@@ -167,10 +216,7 @@ function AdminNews() {
     if (!confirm("Delete this article? This cannot be undone.")) return;
     setBusyId(article.id.toString());
     try {
-      const { error } = await supabase
-        .from("news_articles")
-        .delete()
-        .eq("id", article.id);
+      const { error } = await supabase.from("news_articles").delete().eq("id", article.id);
       if (error) throw error;
       toast.success("Article deleted.");
       load();
@@ -186,12 +232,16 @@ function AdminNews() {
     return <div className="text-muted-foreground">You don't have access to news articles.</div>;
   }
 
+  const displayCover = coverPreview ?? formData.cover_image_url;
+
   return (
     <div>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">News Articles</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Create and publish club news and updates.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Create and publish club news and updates.
+          </p>
         </div>
         <Dialog open={openDialog} onOpenChange={setOpenDialog}>
           <DialogTrigger asChild>
@@ -200,7 +250,7 @@ function AdminNews() {
               New Article
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-h-96 overflow-y-auto">
+          <DialogContent className="max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingArticle ? "Edit Article" : "Create News Article"}</DialogTitle>
             </DialogHeader>
@@ -228,7 +278,9 @@ function AdminNews() {
                 <Textarea
                   id="excerpt"
                   value={formData.excerpt}
-                  onChange={(e) => setFormData({ ...formData, excerpt: e.target.value.slice(0, 280) })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, excerpt: e.target.value.slice(0, 280) })
+                  }
                   placeholder="Brief summary..."
                   rows={2}
                 />
@@ -243,26 +295,67 @@ function AdminNews() {
                   rows={4}
                 />
               </div>
+
               <div>
-                <Label htmlFor="coverImage">Cover Image URL</Label>
-                <Input
-                  id="coverImage"
-                  value={formData.cover_image_url}
-                  onChange={(e) => setFormData({ ...formData, cover_image_url: e.target.value })}
-                  placeholder="https://example.com/image.jpg"
-                />
+                <Label>Cover Image</Label>
+                <div className="mt-1.5 flex items-center gap-3">
+                  {displayCover ? (
+                    <img
+                      src={displayCover}
+                      alt="Cover preview"
+                      className="h-16 w-24 rounded-md border border-border object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-16 w-24 items-center justify-center rounded-md border border-dashed border-border text-muted-foreground">
+                      <ImagePlus className="h-5 w-5" />
+                    </div>
+                  )}
+                  <input
+                    ref={coverInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handleCoverSelected(e.target.files?.[0] ?? null)}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => coverInputRef.current?.click()}
+                  >
+                    {uploadingCover ? (
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <ImagePlus className="mr-1.5 h-3.5 w-3.5" />
+                    )}
+                    {displayCover ? "Change" : "Upload"}
+                  </Button>
+                </div>
               </div>
+
               <div className="flex items-center gap-2">
                 <Checkbox
                   id="published"
                   checked={formData.published}
-                  onCheckedChange={(checked) => setFormData({ ...formData, published: checked === true })}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, published: checked === true })
+                  }
                 />
-                <Label htmlFor="published" className="cursor-pointer">Published (visible to public)</Label>
+                <Label htmlFor="published" className="cursor-pointer">
+                  Published (visible to public)
+                </Label>
               </div>
               <div className="flex gap-2">
-                <Button onClick={handleSaveArticle} disabled={busyId === "save"} className="flex-1">
-                  {editingArticle ? "Update" : "Create"} Article
+                <Button
+                  onClick={handleSaveArticle}
+                  disabled={busyId === "save" || uploadingCover}
+                  className="flex-1"
+                >
+                  {uploadingCover
+                    ? "Uploading…"
+                    : busyId === "save"
+                      ? "Saving…"
+                      : `${editingArticle ? "Update" : "Create"} Article`}
                 </Button>
                 <Button variant="outline" onClick={handleCloseDialog} className="flex-1">
                   Cancel
@@ -299,7 +392,18 @@ function AdminNews() {
             )}
             {articles?.map((a) => (
               <TableRow key={a.id}>
-                <TableCell className="font-semibold text-foreground">{a.title}</TableCell>
+                <TableCell className="font-semibold text-foreground">
+                  <div className="flex items-center gap-2">
+                    {a.cover_image_url && (
+                      <img
+                        src={a.cover_image_url}
+                        alt=""
+                        className="h-8 w-12 rounded object-cover"
+                      />
+                    )}
+                    {a.title}
+                  </div>
+                </TableCell>
                 <TableCell>
                   <Badge variant={a.published ? "default" : "outline"}>
                     {a.published ? "Published" : "Draft"}
