@@ -2397,7 +2397,12 @@ export type Database = {
         Args: { _approve: boolean; _note: string; _request_id: number }
         Returns: undefined
       }
+      fn_link_member_account: {
+        Args: { _member_id: number; _user_id: string }
+        Returns: undefined
+      }
       fn_reissue_qr_token: { Args: { _member_id: number }; Returns: string }
+      fn_unlink_member_account: { Args: { _member_id: number }; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
