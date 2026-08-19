@@ -1,10 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { Plus, Edit2, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Plus, Edit2, Trash2, ImagePlus, X, Loader2, Images } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import {
+  addGalleryPhoto,
+  deleteGalleryPhoto,
+  fetchGalleryPhotos,
+  uploadClubPhoto,
+  type GalleryPhoto,
+} from "@/lib/content-photos";
 import type { Database } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -43,6 +50,16 @@ function AdminGallery() {
     cover_image_url: "",
     published: true,
   });
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+
+  // Photos for the album currently open in the dialog.
+  const [albumPhotos, setAlbumPhotos] = useState<GalleryPhoto[]>([]);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
   const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -62,6 +79,15 @@ function AdminGallery() {
     setAlbums(data);
   }
 
+  async function loadAlbumPhotos(albumId: number) {
+    try {
+      setAlbumPhotos(await fetchGalleryPhotos(albumId));
+    } catch (err) {
+      console.error("[admin/gallery] failed to load photos", err);
+      toast.error("Couldn't load album photos.");
+    }
+  }
+
   function handleOpenDialog(album?: GalleryAlbum) {
     if (album) {
       setEditingAlbum(album);
@@ -71,6 +97,7 @@ function AdminGallery() {
         cover_image_url: album.cover_image_url || "",
         published: album.published,
       });
+      loadAlbumPhotos(album.id);
     } else {
       setEditingAlbum(null);
       setFormData({
@@ -79,13 +106,43 @@ function AdminGallery() {
         cover_image_url: "",
         published: true,
       });
+      setAlbumPhotos([]);
     }
+    setCoverFile(null);
+    setCoverPreview(null);
     setOpenDialog(true);
   }
 
   function handleCloseDialog() {
     setOpenDialog(false);
     setEditingAlbum(null);
+    setCoverFile(null);
+    setCoverPreview(null);
+    setAlbumPhotos([]);
+  }
+
+  function handleCoverSelected(file: File | null) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please choose an image file.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be under 5MB.");
+      return;
+    }
+    setCoverFile(file);
+    setCoverPreview(URL.createObjectURL(file));
+  }
+
+  async function uploadCoverIfNeeded(albumId: number): Promise<string | null> {
+    if (!coverFile) return formData.cover_image_url || null;
+    setUploadingCover(true);
+    try {
+      return await uploadClubPhoto(`gallery/${albumId}`, coverFile);
+    } finally {
+      setUploadingCover(false);
+    }
   }
 
   async function handleSaveAlbum() {
@@ -97,26 +154,42 @@ function AdminGallery() {
     setBusyId("save");
     try {
       if (editingAlbum) {
+        const coverUrl = await uploadCoverIfNeeded(editingAlbum.id);
         const { error } = await supabase
           .from("gallery_albums")
           .update({
             title: formData.title,
             event_date: formData.event_date || null,
-            cover_image_url: formData.cover_image_url || null,
+            cover_image_url: coverUrl,
             published: formData.published,
           })
           .eq("id", editingAlbum.id);
         if (error) throw error;
         toast.success("Album updated.");
       } else {
-        const { error } = await supabase.from("gallery_albums").insert({
-          title: formData.title,
-          event_date: formData.event_date || null,
-          cover_image_url: formData.cover_image_url || null,
-          published: formData.published,
-        });
+        const { data: inserted, error } = await supabase
+          .from("gallery_albums")
+          .insert({
+            title: formData.title,
+            event_date: formData.event_date || null,
+            cover_image_url: null,
+            published: formData.published,
+          })
+          .select()
+          .single();
         if (error) throw error;
-        toast.success("Album created.");
+
+        if (coverFile && inserted) {
+          const coverUrl = await uploadCoverIfNeeded(inserted.id);
+          if (coverUrl) {
+            const { error: coverErr } = await supabase
+              .from("gallery_albums")
+              .update({ cover_image_url: coverUrl })
+              .eq("id", inserted.id);
+            if (coverErr) console.error("[admin/gallery] cover attach error", coverErr);
+          }
+        }
+        toast.success("Album created. Reopen it to add photos.");
       }
       handleCloseDialog();
       load();
@@ -125,6 +198,34 @@ function AdminGallery() {
       toast.error(err instanceof Error ? err.message : "Failed to save album.");
     } finally {
       setBusyId(null);
+    }
+  }
+
+  async function handleAddAlbumPhoto(file: File | null) {
+    if (!file || !editingAlbum) return;
+    setUploadingPhoto(true);
+    try {
+      const photo = await addGalleryPhoto(editingAlbum.id, file);
+      setAlbumPhotos((prev) => [...prev, photo]);
+      toast.success("Photo added.");
+    } catch (err) {
+      console.error("[admin/gallery] add photo error", err);
+      toast.error(err instanceof Error ? err.message : "Failed to upload photo.");
+    } finally {
+      setUploadingPhoto(false);
+      if (photoInputRef.current) photoInputRef.current.value = "";
+    }
+  }
+
+  async function handleDeleteAlbumPhoto(photo: GalleryPhoto) {
+    if (!confirm("Remove this photo from the album?")) return;
+    try {
+      await deleteGalleryPhoto(photo);
+      setAlbumPhotos((prev) => prev.filter((p) => p.id !== photo.id));
+      toast.success("Photo removed.");
+    } catch (err) {
+      console.error("[admin/gallery] delete photo error", err);
+      toast.error("Failed to remove photo.");
     }
   }
 
@@ -150,10 +251,7 @@ function AdminGallery() {
     if (!confirm("Delete this album and all its photos? This cannot be undone.")) return;
     setBusyId(album.id.toString());
     try {
-      const { error } = await supabase
-        .from("gallery_albums")
-        .delete()
-        .eq("id", album.id);
+      const { error } = await supabase.from("gallery_albums").delete().eq("id", album.id);
       if (error) throw error;
       toast.success("Album deleted.");
       load();
@@ -166,15 +264,21 @@ function AdminGallery() {
   }
 
   if (role && !["admin", "editor"].includes(role)) {
-    return <div className="text-muted-foreground">You don't have access to gallery management.</div>;
+    return (
+      <div className="text-muted-foreground">You don't have access to gallery management.</div>
+    );
   }
+
+  const displayCover = coverPreview ?? formData.cover_image_url;
 
   return (
     <div>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Gallery</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Manage photo albums from events and projects.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Manage photo albums from events and projects.
+          </p>
         </div>
         <Dialog open={openDialog} onOpenChange={setOpenDialog}>
           <DialogTrigger asChild>
@@ -183,7 +287,7 @@ function AdminGallery() {
               New Album
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingAlbum ? "Edit Album" : "Create Album"}</DialogTitle>
             </DialogHeader>
@@ -206,26 +310,121 @@ function AdminGallery() {
                   onChange={(e) => setFormData({ ...formData, event_date: e.target.value })}
                 />
               </div>
+
               <div>
-                <Label htmlFor="coverImage">Cover Image URL</Label>
-                <Input
-                  id="coverImage"
-                  value={formData.cover_image_url}
-                  onChange={(e) => setFormData({ ...formData, cover_image_url: e.target.value })}
-                  placeholder="https://example.com/cover.jpg"
-                />
+                <Label>Cover Image</Label>
+                <div className="mt-1.5 flex items-center gap-3">
+                  {displayCover ? (
+                    <img
+                      src={displayCover}
+                      alt="Cover preview"
+                      className="h-16 w-24 rounded-md border border-border object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-16 w-24 items-center justify-center rounded-md border border-dashed border-border text-muted-foreground">
+                      <ImagePlus className="h-5 w-5" />
+                    </div>
+                  )}
+                  <input
+                    ref={coverInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handleCoverSelected(e.target.files?.[0] ?? null)}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => coverInputRef.current?.click()}
+                  >
+                    {uploadingCover ? (
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <ImagePlus className="mr-1.5 h-3.5 w-3.5" />
+                    )}
+                    {displayCover ? "Change" : "Upload"}
+                  </Button>
+                </div>
               </div>
+
+              {editingAlbum && (
+                <div>
+                  <Label className="flex items-center gap-1.5">
+                    <Images className="h-3.5 w-3.5" /> Album Photos
+                  </Label>
+                  <div className="mt-1.5 grid grid-cols-4 gap-2">
+                    {albumPhotos.map((p) => (
+                      <div
+                        key={p.id}
+                        className="group relative aspect-square overflow-hidden rounded-md border border-border"
+                      >
+                        <img
+                          src={p.image_url}
+                          alt={p.caption || ""}
+                          className="h-full w-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteAlbumPhoto(p)}
+                          className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                          title="Remove photo"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => photoInputRef.current?.click()}
+                      disabled={uploadingPhoto}
+                      className="flex aspect-square items-center justify-center rounded-md border border-dashed border-border text-muted-foreground transition-colors hover:border-primary hover:text-primary disabled:opacity-50"
+                    >
+                      {uploadingPhoto ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <Plus className="h-5 w-5" />
+                      )}
+                    </button>
+                    <input
+                      ref={photoInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handleAddAlbumPhoto(e.target.files?.[0] ?? null)}
+                    />
+                  </div>
+                </div>
+              )}
+              {!editingAlbum && (
+                <p className="text-xs text-muted-foreground">
+                  Save the album first, then reopen it to add photos.
+                </p>
+              )}
+
               <div className="flex items-center gap-2">
                 <Checkbox
                   id="published"
                   checked={formData.published}
-                  onCheckedChange={(checked) => setFormData({ ...formData, published: checked === true })}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, published: checked === true })
+                  }
                 />
-                <Label htmlFor="published" className="cursor-pointer">Published (visible to public)</Label>
+                <Label htmlFor="published" className="cursor-pointer">
+                  Published (visible to public)
+                </Label>
               </div>
               <div className="flex gap-2">
-                <Button onClick={handleSaveAlbum} disabled={busyId === "save"} className="flex-1">
-                  {editingAlbum ? "Update" : "Create"} Album
+                <Button
+                  onClick={handleSaveAlbum}
+                  disabled={busyId === "save" || uploadingCover}
+                  className="flex-1"
+                >
+                  {uploadingCover
+                    ? "Uploading…"
+                    : busyId === "save"
+                      ? "Saving…"
+                      : `${editingAlbum ? "Update" : "Create"} Album`}
                 </Button>
                 <Button variant="outline" onClick={handleCloseDialog} className="flex-1">
                   Cancel
@@ -263,13 +462,22 @@ function AdminGallery() {
             )}
             {albums?.map((a) => (
               <TableRow key={a.id}>
-                <TableCell className="font-semibold text-foreground">{a.title}</TableCell>
+                <TableCell className="font-semibold text-foreground">
+                  <div className="flex items-center gap-2">
+                    {a.cover_image_url && (
+                      <img
+                        src={a.cover_image_url}
+                        alt=""
+                        className="h-8 w-12 rounded object-cover"
+                      />
+                    )}
+                    {a.title}
+                  </div>
+                </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
                   {a.event_date ? new Date(a.event_date).toLocaleDateString() : "—"}
                 </TableCell>
-                <TableCell className="text-sm">
-                  {a.published ? "Published" : "Private"}
-                </TableCell>
+                <TableCell className="text-sm">{a.published ? "Published" : "Private"}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex gap-2 justify-end">
                     <button
@@ -300,11 +508,6 @@ function AdminGallery() {
             ))}
           </TableBody>
         </Table>
-      </div>
-
-      <div className="mt-6 p-4 rounded-lg border border-blue-200 bg-blue-50 text-sm text-blue-800">
-        <p className="font-semibold">Photo Upload Coming Soon</p>
-        <p className="mt-1">Soon you'll be able to upload and manage individual photos within each album directly from this interface.</p>
       </div>
     </div>
   );
