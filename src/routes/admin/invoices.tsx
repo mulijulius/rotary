@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Plus, Eye, Send, Trash2 } from "lucide-react";
+import { Plus, Edit2, Trash2, ArrowUp, ArrowDown, Upload, ImageOff } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -33,432 +33,611 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Card } from "@/components/ui/card";
 
-export const Route = createFileRoute("/admin/invoices")({
-  component: AdminInvoices,
+export const Route = createFileRoute("/admin/inventory")({
+  component: AdminInventory,
 });
 
-type Invoice = Database["public"]["Tables"]["invoices"]["Row"];
-type InvoiceStatus = Database["public"]["Enums"]["invoice_status"];
-type Member = Database["public"]["Tables"]["members"]["Row"];
-type FiscalYear = Database["public"]["Tables"]["fiscal_years"]["Row"];
-type Account = Database["public"]["Tables"]["accounts"]["Row"];
+type InventoryItem = Database["public"]["Tables"]["inventory_items"]["Row"];
+type InventoryCategory = Database["public"]["Enums"]["inventory_category"];
+type InventoryStatus = Database["public"]["Enums"]["inventory_status"];
 
-const STATUS_COLORS: Record<InvoiceStatus, string> = {
-  draft: "bg-gray-100 text-gray-800",
-  issued: "bg-blue-100 text-blue-800",
-  partially_paid: "bg-yellow-100 text-yellow-800",
-  paid: "bg-green-100 text-green-800",
-  void: "bg-red-100 text-red-800",
+const statusVariant: Record<InventoryStatus, "default" | "secondary" | "outline" | "destructive"> = {
+  active: "default",
+  damaged: "secondary",
+  lost: "destructive",
+  sold: "outline",
+  disposed: "outline",
 };
 
-interface LineDraft {
-  description: string;
-  account_id: number;
-  quantity: number;
-  unit_price: number;
-}
+const categoryColors: Record<InventoryCategory, string> = {
+  equipment: "bg-blue-100 text-blue-800",
+  furniture: "bg-amber-100 text-amber-800",
+  technology: "bg-purple-100 text-purple-800",
+  supplies: "bg-green-100 text-green-800",
+  vehicle: "bg-orange-100 text-orange-800",
+  building: "bg-red-100 text-red-800",
+  other: "bg-gray-100 text-gray-800",
+};
 
-const emptyLine = (): LineDraft => ({ description: "", account_id: 0, quantity: 1, unit_price: 0 });
+type ItemFormData = Omit<InventoryItem, "id" | "total_value" | "book_value" | "created_by" | "created_at" | "updated_at">;
 
-function makeDocNo(prefix: string) {
-  // Client-side fallback number generator: prefix + date + short random suffix.
-  // Uniqueness is enforced by the invoice_no/bill_no UNIQUE constraint in the DB;
-  // if a collision ever occurs the insert will fail and the user can just retry.
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = (now.getMonth() + 1).toString().padStart(2, "0");
-  const d = now.getDate().toString().padStart(2, "0");
-  const rand = Math.floor(Math.random() * 900 + 100);
-  return `${prefix}-${y}${m}${d}-${rand}`;
-}
-
-function AdminInvoices() {
+function AdminInventory() {
   const { role } = useAuth();
-  const [invoices, setInvoices] = useState<(Invoice & { total?: number })[] | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
-
-  const [members, setMembers] = useState<Member[]>([]);
-  const [fiscalYears, setFiscalYears] = useState<FiscalYear[]>([]);
-  const [accounts, setAccounts] = useState<Account[]>([]);
-
+  const [items, setItems] = useState<InventoryItem[] | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [formData, setFormData] = useState({
-    member_id: 0,
-    fiscal_year_id: 0,
-    invoice_date: new Date().toISOString().slice(0, 10),
-    due_date: new Date().toISOString().slice(0, 10),
-    memo: "",
-    status: "draft" as InvoiceStatus,
+  const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+  const [showMovement, setShowMovement] = useState(false);
+  const [selectedItemForMovement, setSelectedItemForMovement] = useState<InventoryItem | null>(null);
+  const [movementData, setMovementData] = useState({
+    quantity_changed: 0,
+    movement_type: "transfer" as "purchase" | "transfer" | "usage" | "loss" | "repair" | "depreciation" | "disposal",
+    to_location: "",
+    notes: "",
   });
-  const [lines, setLines] = useState<LineDraft[]>([emptyLine()]);
+  const [formData, setFormData] = useState<ItemFormData>({
+    name: "",
+    category: "equipment",
+    description: null,
+    serial_number: null,
+    barcode: null,
+    quantity: 1,
+    unit_of_measure: "unit",
+    unit_cost: 0,
+    status: "active",
+    location: "",
+    purchase_date: new Date().toISOString().slice(0, 10),
+    warranty_expiry: null,
+    responsible_member_id: null,
+    depreciation_account_id: null,
+    accumulated_depreciation: 0,
+    is_depreciable: false,
+    depreciation_years: null,
+    is_for_sale: false,
+    sale_price: null,
+    photo_url: null as string | null,
+  });
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => {
     load();
-    loadReferenceData();
   }, []);
 
   async function load() {
     const { data, error } = await supabase
-      .from("invoices")
-      .select(`*,member:members(first_name,last_name),invoice_lines(quantity,unit_price)`)
-      .order("invoice_date", { ascending: false });
+      .from("inventory_items")
+      .select("*")
+      .order("name", { ascending: true });
     if (error) {
-      console.error("[admin/invoices] failed to load", error);
-      toast.error("Couldn't load invoices.");
+      console.error("[admin/inventory] failed to load", error);
+      toast.error("Couldn't load inventory items.");
       return;
     }
-    const withTotals = (data as any[]).map((inv) => ({
-      ...inv,
-      total: (inv.invoice_lines || []).reduce(
-        (sum: number, l: any) => sum + Number(l.quantity) * Number(l.unit_price),
-        0
-      ),
-    }));
-    setInvoices(withTotals);
+    setItems(data);
   }
 
-  async function loadReferenceData() {
-    const [{ data: m, error: mErr }, { data: fy, error: fyErr }, { data: acc, error: accErr }] = await Promise.all([
-      supabase.from("members").select("*").order("first_name", { ascending: true }),
-      supabase.from("fiscal_years").select("*").order("start_date", { ascending: false }),
-      supabase.from("accounts").select("*").eq("is_active", true).order("code", { ascending: true }),
-    ]);
-    if (mErr) {
-      console.error("[admin/invoices] members load error", mErr);
-      toast.error(`Couldn't load members: ${mErr.message}`);
-    } else if (!m || m.length === 0) {
-      toast.info("No members found yet. Add members under Admin → Members first.");
+  function handleOpenDialog(item?: InventoryItem) {
+    if (item) {
+      setEditingItem(item);
+      setFormData({
+        name: item.name,
+        category: item.category,
+        description: item.description,
+        serial_number: item.serial_number,
+        barcode: item.barcode,
+        quantity: item.quantity,
+        unit_of_measure: item.unit_of_measure,
+        unit_cost: item.unit_cost,
+        status: item.status,
+        location: item.location,
+        purchase_date: item.purchase_date,
+        warranty_expiry: item.warranty_expiry,
+        responsible_member_id: item.responsible_member_id,
+        depreciation_account_id: item.depreciation_account_id,
+        accumulated_depreciation: item.accumulated_depreciation,
+        is_depreciable: item.is_depreciable,
+        depreciation_years: item.depreciation_years,
+        is_for_sale: (item as any).is_for_sale ?? false,
+        sale_price: (item as any).sale_price ?? null,
+        photo_url: (item as any).photo_url ?? null,
+      });
+      setPhotoPreview((item as any).photo_url ?? null);
+      setPhotoFile(null);
+    } else {
+      setEditingItem(null);
+      setFormData({
+        name: "",
+        category: "equipment",
+        description: null,
+        serial_number: null,
+        barcode: null,
+        quantity: 1,
+        unit_of_measure: "unit",
+        unit_cost: 0,
+        status: "active",
+        location: "",
+        purchase_date: new Date().toISOString().slice(0, 10),
+        warranty_expiry: null,
+        responsible_member_id: null,
+        depreciation_account_id: null,
+        accumulated_depreciation: 0,
+        is_depreciable: false,
+        depreciation_years: null,
+        is_for_sale: false,
+        sale_price: null,
+        photo_url: null,
+      });
+      setPhotoPreview(null);
+      setPhotoFile(null);
     }
-    if (fyErr) {
-      console.error("[admin/invoices] fiscal years load error", fyErr);
-      toast.error(`Couldn't load fiscal years: ${fyErr.message}`);
-    } else if (!fy || fy.length === 0) {
-      toast.info("No fiscal years found yet. Add one under Admin → Fiscal Years first.");
-    }
-    if (accErr) {
-      console.error("[admin/invoices] accounts load error", accErr);
-      toast.error(`Couldn't load accounts: ${accErr.message}`);
-    } else if (!acc || acc.length === 0) {
-      toast.info("No active accounts found yet.");
-    }
-    setMembers(m || []);
-    setFiscalYears(fy || []);
-    setAccounts(acc || []);
-    if (fy && fy.length > 0) {
-      setFormData((prev) => (prev.fiscal_year_id ? prev : { ...prev, fiscal_year_id: fy[0].id }));
-    }
-  }
-
-  function handleOpenDialog() {
-    setFormData({
-      member_id: 0,
-      fiscal_year_id: fiscalYears[0]?.id || 0,
-      invoice_date: new Date().toISOString().slice(0, 10),
-      due_date: new Date().toISOString().slice(0, 10),
-      memo: "",
-      status: "draft",
-    });
-    setLines([emptyLine()]);
     setOpenDialog(true);
   }
 
   function handleCloseDialog() {
     setOpenDialog(false);
+    setEditingItem(null);
+    setPhotoFile(null);
+    setPhotoPreview(null);
   }
 
-  function updateLine(index: number, patch: Partial<LineDraft>) {
-    setLines((prev) => prev.map((l, i) => (i === index ? { ...l, ...patch } : l)));
+  function handlePhotoSelected(file: File | null) {
+    if (!file) {
+      setPhotoFile(null);
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please choose an image file.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be under 5MB.");
+      return;
+    }
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
   }
 
-  function addLine() {
-    setLines((prev) => [...prev, emptyLine()]);
-  }
-
-  function removeLine(index: number) {
-    setLines((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev));
-  }
-
-  const lineTotal = lines.reduce((sum, l) => sum + Number(l.quantity || 0) * Number(l.unit_price || 0), 0);
-
-  async function handleSaveInvoice() {
-    if (!formData.member_id) {
-      toast.error("Please select a member.");
-      return;
-    }
-    if (!formData.fiscal_year_id) {
-      toast.error("Please select a fiscal year.");
-      return;
-    }
-    if (!formData.due_date) {
-      toast.error("Please set a due date.");
-      return;
-    }
-    const validLines = lines.filter((l) => l.description.trim() && l.account_id && l.unit_price > 0);
-    if (validLines.length === 0) {
-      toast.error("Add at least one line item with a description, account, and price.");
-      return;
-    }
-
-    setSaving(true);
+  async function uploadPhotoIfNeeded(itemId: number): Promise<string | null> {
+    if (!photoFile) return formData.photo_url;
+    setUploadingPhoto(true);
     try {
-      const invoiceNo = makeDocNo("INV");
-      const { data: invoice, error: invError } = await supabase
-        .from("invoices")
-        .insert({
-          invoice_no: invoiceNo,
-          member_id: formData.member_id,
-          fiscal_year_id: formData.fiscal_year_id,
-          invoice_date: formData.invoice_date,
-          due_date: formData.due_date,
-          memo: formData.memo || null,
-          status: formData.status,
-        })
-        .select()
-        .single();
-      if (invError) throw invError;
-
-      const { error: linesError } = await supabase.from("invoice_lines").insert(
-        validLines.map((l) => ({
-          invoice_id: invoice.id,
-          description: l.description,
-          account_id: l.account_id,
-          quantity: l.quantity,
-          unit_price: l.unit_price,
-        }))
-      );
-      if (linesError) throw linesError;
-
-      toast.success("Invoice created successfully.");
-      setOpenDialog(false);
-      load();
-    } catch (err) {
-      console.error("[admin/invoices] save error", err);
-      toast.error("Failed to create invoice.");
+      const ext = photoFile.name.split(".").pop() || "jpg";
+      const path = `${itemId}/${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("inventory-photos")
+        .upload(path, photoFile, { upsert: true });
+      if (uploadError) throw uploadError;
+      const { data } = supabase.storage.from("inventory-photos").getPublicUrl(path);
+      return data.publicUrl;
     } finally {
-      setSaving(false);
+      setUploadingPhoto(false);
     }
   }
 
-  async function handleUpdateStatus(invoice: Invoice, status: InvoiceStatus) {
-    setBusyId(invoice.id.toString());
+  async function handleSaveItem() {
+    if (!formData.name || !formData.location || formData.unit_cost <= 0) {
+      toast.error("Please fill in all required fields.");
+      return;
+    }
+    if (formData.is_for_sale && (!formData.sale_price || formData.sale_price <= 0)) {
+      toast.error("Set a sale price before listing this item in the member shop.");
+      return;
+    }
+
+    setBusyId("save");
     try {
-      const { error } = await supabase
-        .from("invoices")
-        .update({ status })
-        .eq("id", invoice.id);
-      if (error) throw error;
-      toast.success(`Invoice marked as ${status}.`);
+      if (editingItem) {
+        const photoUrl = await uploadPhotoIfNeeded(editingItem.id);
+        const { error } = await supabase
+          .from("inventory_items")
+          .update({
+            name: formData.name,
+            category: formData.category,
+            description: formData.description,
+            serial_number: formData.serial_number,
+            barcode: formData.barcode,
+            quantity: formData.quantity,
+            unit_of_measure: formData.unit_of_measure,
+            unit_cost: formData.unit_cost,
+            status: formData.status,
+            location: formData.location,
+            purchase_date: formData.purchase_date,
+            warranty_expiry: formData.warranty_expiry,
+            responsible_member_id: formData.responsible_member_id,
+            is_depreciable: formData.is_depreciable,
+            depreciation_years: formData.depreciation_years,
+            is_for_sale: formData.is_for_sale,
+            sale_price: formData.is_for_sale ? formData.sale_price : null,
+            photo_url: photoUrl,
+          })
+          .eq("id", editingItem.id);
+        if (error) throw error;
+        toast.success("Item updated successfully.");
+      } else {
+        const { data: inserted, error } = await supabase
+          .from("inventory_items")
+          .insert({
+          name: formData.name,
+          category: formData.category,
+          description: formData.description,
+          serial_number: formData.serial_number,
+          barcode: formData.barcode,
+          quantity: formData.quantity,
+          unit_of_measure: formData.unit_of_measure,
+          unit_cost: formData.unit_cost,
+          status: formData.status,
+          location: formData.location,
+          purchase_date: formData.purchase_date,
+          warranty_expiry: formData.warranty_expiry,
+          responsible_member_id: formData.responsible_member_id,
+          is_depreciable: formData.is_depreciable,
+          depreciation_years: formData.depreciation_years,
+          is_for_sale: formData.is_for_sale,
+          sale_price: formData.is_for_sale ? formData.sale_price : null,
+        })
+          .select()
+          .single();
+        if (error) throw error;
+
+        if (photoFile && inserted) {
+          const photoUrl = await uploadPhotoIfNeeded(inserted.id);
+          if (photoUrl) {
+            const { error: photoErr } = await supabase
+              .from("inventory_items")
+              .update({ photo_url: photoUrl })
+              .eq("id", inserted.id);
+            if (photoErr) console.error("[admin/inventory] photo attach error", photoErr);
+          }
+        }
+        toast.success("Item added successfully.");
+      }
+      handleCloseDialog();
       load();
-    } catch (err) {
-      console.error("[admin/invoices] update error", err);
-      toast.error("Failed to update invoice.");
+    } catch (error: any) {
+      console.error("[admin/inventory] save error", error);
+      toast.error(error.message || "Failed to save item.");
     } finally {
       setBusyId(null);
     }
   }
 
-  if (role && !["admin", "treasurer"].includes(role)) {
-    return <div className="text-muted-foreground">You don't have access to invoices.</div>;
+  async function handleRecordMovement() {
+    if (!selectedItemForMovement || movementData.quantity_changed === 0) {
+      toast.error("Please enter a valid quantity.");
+      return;
+    }
+
+    setBusyId(`movement-${selectedItemForMovement.id}`);
+    try {
+      const newQuantity = selectedItemForMovement.quantity + movementData.quantity_changed;
+      if (newQuantity < 0) {
+        toast.error("Quantity cannot be negative.");
+        setBusyId(null);
+        return;
+      }
+
+      // Record movement
+      const { error: movementError } = await supabase
+        .from("inventory_movements")
+        .insert({
+          inventory_item_id: selectedItemForMovement.id,
+          movement_type: movementData.movement_type,
+          quantity_changed: movementData.quantity_changed,
+          old_quantity: selectedItemForMovement.quantity,
+          new_quantity: newQuantity,
+          to_location: movementData.to_location,
+          notes: movementData.notes,
+          recorded_by: 1, // Would be actual user ID in production
+          movement_date: new Date().toISOString().slice(0, 10),
+        });
+
+      if (movementError) throw movementError;
+
+      // Update item quantity
+      const { error: updateError } = await supabase
+        .from("inventory_items")
+        .update({ quantity: newQuantity, location: movementData.to_location || selectedItemForMovement.location })
+        .eq("id", selectedItemForMovement.id);
+
+      if (updateError) throw updateError;
+
+      toast.success("Movement recorded successfully.");
+      setShowMovement(false);
+      setSelectedItemForMovement(null);
+      setMovementData({
+        quantity_changed: 0,
+        movement_type: "transfer",
+        to_location: "",
+        notes: "",
+      });
+      load();
+    } catch (error: any) {
+      console.error("[admin/inventory] movement error", error);
+      toast.error("Failed to record movement.");
+    } finally {
+      setBusyId(null);
+    }
   }
+
+  async function handleDeleteItem(id: number) {
+    if (!confirm("Are you sure you want to delete this item?")) return;
+    try {
+      const { error } = await supabase.from("inventory_items").delete().eq("id", id);
+      if (error) throw error;
+      toast.success("Item deleted.");
+      load();
+    } catch (error: any) {
+      console.error("[admin/inventory] delete error", error);
+      toast.error("Failed to delete item.");
+    }
+  }
+
+  if (role && !["admin", "treasurer"].includes(role)) {
+    return <div className="text-muted-foreground">You don't have access to inventory management.</div>;
+  }
+
+  const totalValue = items?.reduce((sum, item) => sum + (item.total_value || 0), 0) || 0;
+  const activeItems = items?.filter((i) => i.status === "active").length || 0;
 
   return (
     <div>
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Invoices</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Create and manage member invoices for dues and fundraisers.</p>
+          <h1 className="text-2xl font-bold text-foreground">Inventory Management</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Track assets, equipment, and inventory items.</p>
         </div>
         <Dialog open={openDialog} onOpenChange={setOpenDialog}>
           <DialogTrigger asChild>
-            <Button onClick={handleOpenDialog} size="sm" className="gap-2">
+            <Button onClick={() => handleOpenDialog()} className="gap-2">
               <Plus className="h-4 w-4" />
-              Create Invoice
+              Add Item
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Create Invoice</DialogTitle>
+              <DialogTitle>{editingItem ? "Edit Item" : "Add New Item"}</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
+            <div className="space-y-4 max-h-[70vh] overflow-y-auto">
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Member *</Label>
-                  <Select
-                    value={formData.member_id ? formData.member_id.toString() : ""}
-                    onValueChange={(v) => setFormData({ ...formData, member_id: parseInt(v) })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select member" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {members.length === 0 ? (
-                        <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                          No members yet — add one under Admin → Members.
-                        </div>
-                      ) : (
-                        members.map((m) => (
-                          <SelectItem key={m.id} value={m.id.toString()}>
-                            {m.first_name} {m.last_name}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Fiscal Year *</Label>
-                  <Select
-                    value={formData.fiscal_year_id ? formData.fiscal_year_id.toString() : ""}
-                    onValueChange={(v) => setFormData({ ...formData, fiscal_year_id: parseInt(v) })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select fiscal year" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {fiscalYears.length === 0 ? (
-                        <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                          No fiscal years yet — add one under Admin → Fiscal Years.
-                        </div>
-                      ) : (
-                        fiscalYears.map((fy) => (
-                          <SelectItem key={fy.id} value={fy.id.toString()}>
-                            {fy.name}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
+                <div className="col-span-2">
+                  <Label htmlFor="name">Item Name *</Label>
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="e.g., Projector XYZ"
+                  />
                 </div>
               </div>
-
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>Invoice Date</Label>
-                  <Input
-                    type="date"
-                    value={formData.invoice_date}
-                    onChange={(e) => setFormData({ ...formData, invoice_date: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label>Due Date *</Label>
-                  <Input
-                    type="date"
-                    value={formData.due_date}
-                    onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label>Status</Label>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(v) => setFormData({ ...formData, status: v as InvoiceStatus })}
-                  >
+                  <Label htmlFor="category">Category</Label>
+                  <Select value={formData.category} onValueChange={(value: any) => setFormData({ ...formData, category: value })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="draft">Draft</SelectItem>
-                      <SelectItem value="issued">Issued</SelectItem>
+                      <SelectItem value="equipment">Equipment</SelectItem>
+                      <SelectItem value="furniture">Furniture</SelectItem>
+                      <SelectItem value="technology">Technology</SelectItem>
+                      <SelectItem value="supplies">Supplies</SelectItem>
+                      <SelectItem value="vehicle">Vehicle</SelectItem>
+                      <SelectItem value="building">Building</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="status">Status</Label>
+                  <Select value={formData.status} onValueChange={(value: any) => setFormData({ ...formData, status: value })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="damaged">Damaged</SelectItem>
+                      <SelectItem value="lost">Lost</SelectItem>
+                      <SelectItem value="sold">Sold</SelectItem>
+                      <SelectItem value="disposed">Disposed</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
-
               <div>
-                <Label>Memo</Label>
+                <Label htmlFor="description">Description</Label>
                 <Textarea
-                  value={formData.memo}
-                  onChange={(e) => setFormData({ ...formData, memo: e.target.value })}
-                  placeholder="Optional note about this invoice"
+                  id="description"
+                  value={formData.description || ""}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value || null })}
+                  placeholder="Item details..."
                 />
               </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <Label>Line Items *</Label>
-                  <Button type="button" variant="outline" size="sm" onClick={addLine} className="gap-1">
-                    <Plus className="h-3 w-3" />
-                    Add line
-                  </Button>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="serial_number">Serial Number</Label>
+                  <Input
+                    id="serial_number"
+                    value={formData.serial_number || ""}
+                    onChange={(e) => setFormData({ ...formData, serial_number: e.target.value || null })}
+                  />
                 </div>
-                <div className="space-y-2">
-                  {lines.map((line, idx) => (
-                    <div key={idx} className="grid grid-cols-12 gap-2 items-end">
-                      <div className="col-span-4">
-                        <Input
-                          placeholder="Description"
-                          value={line.description}
-                          onChange={(e) => updateLine(idx, { description: e.target.value })}
-                        />
-                      </div>
-                      <div className="col-span-3">
-                        <Select
-                          value={line.account_id ? line.account_id.toString() : ""}
-                          onValueChange={(v) => updateLine(idx, { account_id: parseInt(v) })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Account" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {accounts.length === 0 ? (
-                              <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                                No accounts found.
-                              </div>
-                            ) : (
-                              accounts.map((a) => (
-                                <SelectItem key={a.id} value={a.id.toString()}>
-                                  {a.code} · {a.name}
-                                </SelectItem>
-                              ))
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="col-span-2">
-                        <Input
-                          type="number"
-                          min={0}
-                          placeholder="Qty"
-                          value={line.quantity}
-                          onChange={(e) => updateLine(idx, { quantity: parseFloat(e.target.value) || 0 })}
-                        />
-                      </div>
-                      <div className="col-span-2">
-                        <Input
-                          type="number"
-                          min={0}
-                          placeholder="Unit price"
-                          value={line.unit_price}
-                          onChange={(e) => updateLine(idx, { unit_price: parseFloat(e.target.value) || 0 })}
-                        />
-                      </div>
-                      <div className="col-span-1 flex justify-end">
-                        <button
-                          type="button"
-                          onClick={() => removeLine(idx)}
-                          className="p-2 text-muted-foreground hover:text-destructive transition-colors"
-                          title="Remove line"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                <div>
+                  <Label htmlFor="barcode">Barcode</Label>
+                  <Input
+                    id="barcode"
+                    value={formData.barcode || ""}
+                    onChange={(e) => setFormData({ ...formData, barcode: e.target.value || null })}
+                  />
                 </div>
-                <div className="mt-2 text-right text-sm font-semibold text-foreground">
-                  Total: {lineTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                <div>
+                  <Label htmlFor="location">Location *</Label>
+                  <Input
+                    id="location"
+                    value={formData.location ?? ""}
+                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                    placeholder="Room/Building"
+                  />
                 </div>
               </div>
+              <div className="grid grid-cols-4 gap-4">
+                <div>
+                  <Label htmlFor="quantity">Quantity *</Label>
+                  <Input
+                    id="quantity"
+                    type="number"
+                    value={formData.quantity}
+                    onChange={(e) => setFormData({ ...formData, quantity: parseFloat(e.target.value) })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="unit">Unit</Label>
+                  <Input
+                    id="unit"
+                    value={formData.unit_of_measure ?? ""}
+                    onChange={(e) => setFormData({ ...formData, unit_of_measure: e.target.value })}
+                    placeholder="unit"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="unit_cost">Unit Cost *</Label>
+                  <Input
+                    id="unit_cost"
+                    type="number"
+                    step="0.01"
+                    value={formData.unit_cost}
+                    onChange={(e) => setFormData({ ...formData, unit_cost: parseFloat(e.target.value) })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="purchase_date">Purchase Date</Label>
+                  <Input
+                    id="purchase_date"
+                    type="date"
+                    value={formData.purchase_date || ""}
+                    onChange={(e) => setFormData({ ...formData, purchase_date: e.target.value || null })}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="warranty_expiry">Warranty Expiry</Label>
+                  <Input
+                    id="warranty_expiry"
+                    type="date"
+                    value={formData.warranty_expiry || ""}
+                    onChange={(e) => setFormData({ ...formData, warranty_expiry: e.target.value || null })}
+                  />
+                </div>
+                <div className="flex items-end">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.is_depreciable}
+                      onChange={(e) => setFormData({ ...formData, is_depreciable: e.target.checked })}
+                      className="rounded border-input"
+                    />
+                    <span className="text-sm">Depreciable Asset</span>
+                  </label>
+                </div>
+              </div>
+              {formData.is_depreciable && (
+                <div>
+                  <Label htmlFor="depreciation_years">Depreciation Years</Label>
+                  <Input
+                    id="depreciation_years"
+                    type="number"
+                    value={formData.depreciation_years || ""}
+                    onChange={(e) => setFormData({ ...formData, depreciation_years: e.target.value ? parseInt(e.target.value) : null })}
+                  />
+                </div>
+              )}
 
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={handleCloseDialog} className="flex-1" disabled={saving}>
+              <div>
+                <Label>Item Photo</Label>
+                <div className="mt-1 flex items-center gap-4">
+                  <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted">
+                    {photoPreview ? (
+                      <img src={photoPreview} alt="Item preview" className="h-full w-full object-cover" />
+                    ) : (
+                      <ImageOff className="h-6 w-6 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-md border border-input px-3 py-2 text-sm font-medium hover:bg-muted">
+                      <Upload className="h-4 w-4" />
+                      {photoPreview ? "Replace photo" : "Upload photo"}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => handlePhotoSelected(e.target.files?.[0] || null)}
+                      />
+                    </label>
+                    {photoPreview && (
+                      <button
+                        type="button"
+                        className="text-xs text-muted-foreground hover:text-destructive text-left"
+                        onClick={() => {
+                          setPhotoFile(null);
+                          setPhotoPreview(null);
+                          setFormData({ ...formData, photo_url: null });
+                        }}
+                      >
+                        Remove photo
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">JPG, PNG, or WebP, up to 5MB.</p>
+              </div>
+
+              <div className="rounded-lg border border-border p-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.is_for_sale}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        is_for_sale: e.target.checked,
+                        sale_price: e.target.checked ? formData.sale_price : null,
+                      })
+                    }
+                    className="rounded border-input"
+                  />
+                  <span className="text-sm font-medium">List in Member Shop</span>
+                </label>
+                {formData.is_for_sale && (
+                  <div className="mt-3">
+                    <Label htmlFor="sale_price">Sale Price (per unit) *</Label>
+                    <Input
+                      id="sale_price"
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={formData.sale_price ?? ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, sale_price: e.target.value ? parseFloat(e.target.value) : null })
+                      }
+                      placeholder="e.g. 500"
+                    />
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Members will see this item in the shop and can place an order once it's listed with a price.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4">
+                <Button variant="outline" onClick={handleCloseDialog}>
                   Cancel
                 </Button>
-                <Button onClick={handleSaveInvoice} className="flex-1" disabled={saving}>
-                  {saving ? "Saving…" : "Create Invoice"}
+                <Button onClick={handleSaveItem} disabled={busyId === "save" || uploadingPhoto}>
+                  {uploadingPhoto ? "Uploading photo…" : busyId === "save" ? "Saving…" : `${editingItem ? "Update" : "Add"} Item`}
                 </Button>
               </div>
             </div>
@@ -466,76 +645,184 @@ function AdminInvoices() {
         </Dialog>
       </div>
 
-      <div className="mt-6 overflow-x-auto rounded-2xl border border-border bg-card shadow-[var(--shadow-card)]">
+      {/* Summary Cards */}
+      <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="p-4">
+          <p className="text-sm text-muted-foreground">Total Items</p>
+          <p className="text-2xl font-bold mt-1">{items?.length || 0}</p>
+        </Card>
+        <Card className="p-4">
+          <p className="text-sm text-muted-foreground">Active Items</p>
+          <p className="text-2xl font-bold mt-1 text-green-600">{activeItems}</p>
+        </Card>
+        <Card className="p-4">
+          <p className="text-sm text-muted-foreground">Total Value</p>
+          <p className="text-2xl font-bold mt-1 text-blue-600">
+            {parseFloat(totalValue.toString()).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </p>
+        </Card>
+      </div>
+
+      {/* Movement Dialog */}
+      <Dialog open={showMovement} onOpenChange={setShowMovement}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Record Stock Movement</DialogTitle>
+          </DialogHeader>
+          {selectedItemForMovement && (
+            <div className="space-y-4">
+              <div className="p-3 bg-muted rounded">
+                <p className="font-semibold">{selectedItemForMovement.name}</p>
+                <p className="text-sm text-muted-foreground">Current: {selectedItemForMovement.quantity} {selectedItemForMovement.unit_of_measure}</p>
+              </div>
+              <div>
+                <Label htmlFor="movement_type">Movement Type</Label>
+                <Select value={movementData.movement_type} onValueChange={(value: any) => setMovementData({ ...movementData, movement_type: value })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="purchase">Purchase</SelectItem>
+                    <SelectItem value="transfer">Transfer</SelectItem>
+                    <SelectItem value="usage">Usage</SelectItem>
+                    <SelectItem value="loss">Loss</SelectItem>
+                    <SelectItem value="repair">Repair</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="quantity_changed">Quantity Change (+ or -)</Label>
+                <Input
+                  id="quantity_changed"
+                  type="number"
+                  value={movementData.quantity_changed}
+                  onChange={(e) => setMovementData({ ...movementData, quantity_changed: parseFloat(e.target.value) })}
+                  placeholder="Enter quantity change"
+                />
+              </div>
+              <div>
+                <Label htmlFor="to_location">New Location</Label>
+                <Input
+                  id="to_location"
+                  value={movementData.to_location}
+                  onChange={(e) => setMovementData({ ...movementData, to_location: e.target.value })}
+                  placeholder="Location after movement"
+                />
+              </div>
+              <div>
+                <Label htmlFor="notes">Notes</Label>
+                <Textarea
+                  id="notes"
+                  value={movementData.notes}
+                  onChange={(e) => setMovementData({ ...movementData, notes: e.target.value })}
+                  placeholder="Additional details..."
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setShowMovement(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleRecordMovement} disabled={busyId?.startsWith("movement")}>
+                  Record Movement
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Inventory Table */}
+      <div className="mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-card)]">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="whitespace-nowrap">Invoice No</TableHead>
-              <TableHead>Member</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Due Date</TableHead>
-              <TableHead>Amount Due</TableHead>
+              <TableHead>Photo</TableHead>
+              <TableHead>Item Name</TableHead>
+              <TableHead>Category</TableHead>
+              <TableHead>Serial #</TableHead>
+              <TableHead className="text-right">Qty</TableHead>
+              <TableHead className="text-right">Unit Cost</TableHead>
+              <TableHead className="text-right">Total Value</TableHead>
+              <TableHead>Location</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {invoices === null && (
-              <TableRow>
-                <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
-                  Loading…
-                </TableCell>
-              </TableRow>
-            )}
-            {invoices?.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
-                  No invoices yet.
-                </TableCell>
-              </TableRow>
-            )}
-            {invoices?.map((inv) => (
-              <TableRow key={inv.id}>
-                <TableCell className="font-mono font-semibold text-foreground">{inv.invoice_no}</TableCell>
-                <TableCell className="font-semibold text-foreground">
-                  {(inv as any).member?.first_name} {(inv as any).member?.last_name}
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {new Date(inv.invoice_date).toLocaleDateString()}
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {new Date(inv.due_date).toLocaleDateString()}
-                </TableCell>
-                <TableCell className="font-semibold">
-                  {(inv.total ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                </TableCell>
-                <TableCell>
-                  <Badge className={STATUS_COLORS[inv.status]}>
-                    {inv.status.replace("_", " ")}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex gap-2 justify-end">
-                    <button
-                      title="View"
-                      className="p-1 text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </button>
-                    {inv.status === "draft" && (
-                      <button
-                        title="Issue"
-                        disabled={busyId === inv.id.toString()}
-                        onClick={() => handleUpdateStatus(inv, "issued")}
-                        className="p-1 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+            {items && items.length > 0 ? (
+              items.map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell>
+                    <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-md border border-border bg-muted">
+                      {(item as any).photo_url ? (
+                        <img
+                          src={(item as any).photo_url}
+                          alt={item.name}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <ImageOff className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-medium">{item.name}</TableCell>
+                  <TableCell>
+                    <span className={`px-2 py-1 rounded text-xs font-semibold ${categoryColors[item.category]}`}>
+                      {item.category}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{item.serial_number || "—"}</TableCell>
+                  <TableCell className="text-right font-mono">
+                    {item.quantity} {item.unit_of_measure}
+                  </TableCell>
+                  <TableCell className="text-right font-mono">
+                    {parseFloat(item.unit_cost.toString()).toFixed(2)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono font-semibold">
+                    {parseFloat((item.total_value || 0).toString()).toFixed(2)}
+                  </TableCell>
+                  <TableCell className="text-sm">{item.location}</TableCell>
+                  <TableCell>
+                    <Badge variant={statusVariant[item.status]}>{item.status}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setSelectedItemForMovement(item);
+                          setShowMovement(true);
+                        }}
+                        title="Record movement"
                       >
-                        <Send className="h-4 w-4" />
-                      </button>
-                    )}
-                  </div>
+                        <ArrowUp className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleOpenDialog(item)}
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleDeleteItem(item.id)}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
+                  No inventory items. Add one to get started.
                 </TableCell>
               </TableRow>
-            ))}
+            )}
           </TableBody>
         </Table>
       </div>
