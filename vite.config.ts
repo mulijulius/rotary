@@ -6,10 +6,16 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
+// On Vercel (VERCEL=1 is set automatically during their build) we emit the
+// Vercel Build Output API bundle so SSR + server functions actually run there.
+// Everywhere else (Lovable hosting, local) the default Cloudflare target is kept.
+const isVercel = Boolean(process.env['VERCEL']);
+
 export default defineConfig({
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  ...(isVercel ? { nitro: { preset: "vercel" } } : {}),
 });
