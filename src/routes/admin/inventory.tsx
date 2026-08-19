@@ -94,6 +94,8 @@ function AdminInventory() {
     accumulated_depreciation: 0,
     is_depreciable: false,
     depreciation_years: null,
+    is_for_sale: false,
+    sale_price: null,
   });
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -135,6 +137,8 @@ function AdminInventory() {
         accumulated_depreciation: item.accumulated_depreciation,
         is_depreciable: item.is_depreciable,
         depreciation_years: item.depreciation_years,
+        is_for_sale: (item as any).is_for_sale ?? false,
+        sale_price: (item as any).sale_price ?? null,
       });
     } else {
       setEditingItem(null);
@@ -156,6 +160,8 @@ function AdminInventory() {
         accumulated_depreciation: 0,
         is_depreciable: false,
         depreciation_years: null,
+        is_for_sale: false,
+        sale_price: null,
       });
     }
     setOpenDialog(true);
@@ -169,6 +175,10 @@ function AdminInventory() {
   async function handleSaveItem() {
     if (!formData.name || !formData.location || formData.unit_cost <= 0) {
       toast.error("Please fill in all required fields.");
+      return;
+    }
+    if (formData.is_for_sale && (!formData.sale_price || formData.sale_price <= 0)) {
+      toast.error("Set a sale price before listing this item in the member shop.");
       return;
     }
 
@@ -193,6 +203,8 @@ function AdminInventory() {
             responsible_member_id: formData.responsible_member_id,
             is_depreciable: formData.is_depreciable,
             depreciation_years: formData.depreciation_years,
+            is_for_sale: formData.is_for_sale,
+            sale_price: formData.is_for_sale ? formData.sale_price : null,
           })
           .eq("id", editingItem.id);
         if (error) throw error;
@@ -214,6 +226,8 @@ function AdminInventory() {
           responsible_member_id: formData.responsible_member_id,
           is_depreciable: formData.is_depreciable,
           depreciation_years: formData.depreciation_years,
+          is_for_sale: formData.is_for_sale,
+          sale_price: formData.is_for_sale ? formData.sale_price : null,
         });
         if (error) throw error;
         toast.success("Item added successfully.");
@@ -478,6 +492,44 @@ function AdminInventory() {
                   />
                 </div>
               )}
+
+              <div className="rounded-lg border border-border p-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.is_for_sale}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        is_for_sale: e.target.checked,
+                        sale_price: e.target.checked ? formData.sale_price : null,
+                      })
+                    }
+                    className="rounded border-input"
+                  />
+                  <span className="text-sm font-medium">List in Member Shop</span>
+                </label>
+                {formData.is_for_sale && (
+                  <div className="mt-3">
+                    <Label htmlFor="sale_price">Sale Price (per unit) *</Label>
+                    <Input
+                      id="sale_price"
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={formData.sale_price ?? ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, sale_price: e.target.value ? parseFloat(e.target.value) : null })
+                      }
+                      placeholder="e.g. 500"
+                    />
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Members will see this item in the shop and can place an order once it's listed with a price.
+                    </p>
+                  </div>
+                )}
+              </div>
+
               <div className="flex justify-end gap-2 pt-4">
                 <Button variant="outline" onClick={handleCloseDialog}>
                   Cancel
