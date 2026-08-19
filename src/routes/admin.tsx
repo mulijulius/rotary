@@ -33,6 +33,7 @@ const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
     { to: "/admin/reports", label: "Financial Reports" },
     // Inventory Module
     { to: "/admin/inventory", label: "Inventory" },
+    { to: "/admin/product-orders", label: "Product Orders" },
     // Communications
     { to: "/admin/email-campaigns", label: "Email Campaigns" },
     { to: "/admin/messages", label: "Messages" },
@@ -49,6 +50,7 @@ const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
     { to: "/admin/bills", label: "Bills" },
     { to: "/admin/reports", label: "Financial Reports" },
     { to: "/admin/inventory", label: "Inventory" },
+    { to: "/admin/product-orders", label: "Product Orders" },
     { to: "/admin/members", label: "Members" },
     { to: "/admin/messages", label: "Messages" },
   ],
@@ -68,7 +70,10 @@ const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
     { to: "/admin/gallery", label: "Gallery" },
     { to: "/admin/messages", label: "Messages" },
   ],
-  member: [{ to: "/admin", label: "Overview" }],
+  member: [
+    { to: "/admin", label: "Overview" },
+    { to: "/admin/shop", label: "Shop" },
+  ],
 };
 
 function AdminLayout() {
