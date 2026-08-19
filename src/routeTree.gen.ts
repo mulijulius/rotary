@@ -36,9 +36,12 @@ import { Route as AdminMeetingsRouteImport } from './routes/admin/meetings'
 import { Route as AdminMembersRouteImport } from './routes/admin/members'
 import { Route as AdminMessagesRouteImport } from './routes/admin/messages'
 import { Route as AdminNewsRouteImport } from './routes/admin/news'
+import { Route as AdminProductOrdersRouteImport } from './routes/admin/product-orders'
 import { Route as AdminProfileRouteImport } from './routes/admin/profile'
 import { Route as AdminProjectsRouteImport } from './routes/admin/projects'
 import { Route as AdminReportsRouteImport } from './routes/admin/reports'
+import { Route as AdminScanRouteImport } from './routes/admin/scan'
+import { Route as AdminShopRouteImport } from './routes/admin/shop'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as AdminVisitorsRouteImport } from './routes/admin/visitors'
 import { Route as AttendanceCheckInRouteImport } from './routes/attendance/check-in'
@@ -179,6 +182,11 @@ const AdminNewsRoute = AdminNewsRouteImport.update({
   path: '/news',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminProductOrdersRoute = AdminProductOrdersRouteImport.update({
+  id: '/product-orders',
+  path: '/product-orders',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminProfileRoute = AdminProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -192,6 +200,16 @@ const AdminProjectsRoute = AdminProjectsRouteImport.update({
 const AdminReportsRoute = AdminReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminScanRoute = AdminScanRouteImport.update({
+  id: '/scan',
+  path: '/scan',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminShopRoute = AdminShopRouteImport.update({
+  id: '/shop',
+  path: '/shop',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
@@ -243,9 +261,12 @@ export interface FileRoutesByFullPath {
   '/admin/members': typeof AdminMembersRoute
   '/admin/messages': typeof AdminMessagesRoute
   '/admin/news': typeof AdminNewsRoute
+  '/admin/product-orders': typeof AdminProductOrdersRoute
   '/admin/profile': typeof AdminProfileRoute
   '/admin/projects': typeof AdminProjectsRoute
   '/admin/reports': typeof AdminReportsRoute
+  '/admin/scan': typeof AdminScanRoute
+  '/admin/shop': typeof AdminShopRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/visitors': typeof AdminVisitorsRoute
   '/attendance/check-in': typeof AttendanceCheckInRoute
@@ -278,9 +299,12 @@ export interface FileRoutesByTo {
   '/admin/members': typeof AdminMembersRoute
   '/admin/messages': typeof AdminMessagesRoute
   '/admin/news': typeof AdminNewsRoute
+  '/admin/product-orders': typeof AdminProductOrdersRoute
   '/admin/profile': typeof AdminProfileRoute
   '/admin/projects': typeof AdminProjectsRoute
   '/admin/reports': typeof AdminReportsRoute
+  '/admin/scan': typeof AdminScanRoute
+  '/admin/shop': typeof AdminShopRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/visitors': typeof AdminVisitorsRoute
   '/attendance/check-in': typeof AttendanceCheckInRoute
@@ -315,9 +339,12 @@ export interface FileRoutesById {
   '/admin/members': typeof AdminMembersRoute
   '/admin/messages': typeof AdminMessagesRoute
   '/admin/news': typeof AdminNewsRoute
+  '/admin/product-orders': typeof AdminProductOrdersRoute
   '/admin/profile': typeof AdminProfileRoute
   '/admin/projects': typeof AdminProjectsRoute
   '/admin/reports': typeof AdminReportsRoute
+  '/admin/scan': typeof AdminScanRoute
+  '/admin/shop': typeof AdminShopRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/visitors': typeof AdminVisitorsRoute
   '/attendance/check-in': typeof AttendanceCheckInRoute
@@ -353,9 +380,12 @@ export interface FileRouteTypes {
     | '/admin/members'
     | '/admin/messages'
     | '/admin/news'
+    | '/admin/product-orders'
     | '/admin/profile'
     | '/admin/projects'
     | '/admin/reports'
+    | '/admin/scan'
+    | '/admin/shop'
     | '/admin/users'
     | '/admin/visitors'
     | '/attendance/check-in'
@@ -388,9 +418,12 @@ export interface FileRouteTypes {
     | '/admin/members'
     | '/admin/messages'
     | '/admin/news'
+    | '/admin/product-orders'
     | '/admin/profile'
     | '/admin/projects'
     | '/admin/reports'
+    | '/admin/scan'
+    | '/admin/shop'
     | '/admin/users'
     | '/admin/visitors'
     | '/attendance/check-in'
@@ -424,9 +457,12 @@ export interface FileRouteTypes {
     | '/admin/members'
     | '/admin/messages'
     | '/admin/news'
+    | '/admin/product-orders'
     | '/admin/profile'
     | '/admin/projects'
     | '/admin/reports'
+    | '/admin/scan'
+    | '/admin/shop'
     | '/admin/users'
     | '/admin/visitors'
     | '/attendance/check-in'
@@ -641,6 +677,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminNewsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/product-orders': {
+      id: '/admin/product-orders'
+      path: '/product-orders'
+      fullPath: '/admin/product-orders'
+      preLoaderRoute: typeof AdminProductOrdersRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/profile': {
       id: '/admin/profile'
       path: '/profile'
@@ -660,6 +703,20 @@ declare module '@tanstack/react-router' {
       path: '/reports'
       fullPath: '/admin/reports'
       preLoaderRoute: typeof AdminReportsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/scan': {
+      id: '/admin/scan'
+      path: '/scan'
+      fullPath: '/admin/scan'
+      preLoaderRoute: typeof AdminScanRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/shop': {
+      id: '/admin/shop'
+      path: '/shop'
+      fullPath: '/admin/shop'
+      preLoaderRoute: typeof AdminShopRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/users': {
@@ -708,9 +765,12 @@ interface AdminRouteChildren {
   AdminMembersRoute: typeof AdminMembersRoute
   AdminMessagesRoute: typeof AdminMessagesRoute
   AdminNewsRoute: typeof AdminNewsRoute
+  AdminProductOrdersRoute: typeof AdminProductOrdersRoute
   AdminProfileRoute: typeof AdminProfileRoute
   AdminProjectsRoute: typeof AdminProjectsRoute
   AdminReportsRoute: typeof AdminReportsRoute
+  AdminScanRoute: typeof AdminScanRoute
+  AdminShopRoute: typeof AdminShopRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminVisitorsRoute: typeof AdminVisitorsRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -732,9 +792,12 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminMembersRoute: AdminMembersRoute,
   AdminMessagesRoute: AdminMessagesRoute,
   AdminNewsRoute: AdminNewsRoute,
+  AdminProductOrdersRoute: AdminProductOrdersRoute,
   AdminProfileRoute: AdminProfileRoute,
   AdminProjectsRoute: AdminProjectsRoute,
   AdminReportsRoute: AdminReportsRoute,
+  AdminScanRoute: AdminScanRoute,
+  AdminShopRoute: AdminShopRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminVisitorsRoute: AdminVisitorsRoute,
   AdminIndexRoute: AdminIndexRoute,
