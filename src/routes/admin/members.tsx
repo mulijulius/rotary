@@ -43,6 +43,10 @@ export const Route = createFileRoute("/admin/members")({
 
 type Member = Database["public"]["Tables"]["members"]["Row"];
 type AuthUser = { id: string; email: string; createdAt: string };
+type RoleInfo = {
+  role: Database["public"]["Enums"]["app_role"];
+  status: "pending" | "approved" | "revoked";
+};
 
 const statusVariant: Record<Member["status"], "default" | "secondary" | "outline" | "destructive"> =
   {
@@ -59,15 +63,23 @@ type MemberFormData = Omit<
 >;
 
 function AdminMembers() {
-  const { role } = useAuth();
+  const { role, session } = useAuth();
   const listAuthUsersFn = useServerFn(listAuthUsers);
   const [members, setMembers] = useState<Member[] | null>(null);
   // Only fetched for admins (listAuthUsers is admin-only server-side); used
   // to show which account, if any, each member profile is linked to, and
   // to offer unlinked accounts when linking one.
   const [authUsers, setAuthUsers] = useState<AuthUser[] | null>(null);
+  // Most-recent live (pending/approved) role request per account, keyed by
+  // user id — shown next to each account in the "link to signed-up
+  // account" dropdown so an admin can tell a fresh sign-up apart from an
+  // account with no request at all.
+  const [roles, setRoles] = useState<Record<string, RoleInfo>>({});
   const [openDialog, setOpenDialog] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
+  // Which unlinked account (if any) the "Add New Member" form will link to
+  // on save — only used when creating a brand-new profile, not editing.
+  const [linkToUserId, setLinkToUserId] = useState<string>("");
   const [linkMember, setLinkMember] = useState<Member | null>(null);
   const [linkUserId, setLinkUserId] = useState<string>("");
   const [linkBusy, setLinkBusy] = useState(false);
@@ -109,6 +121,21 @@ function AdminMembers() {
         setAuthUsers(await listAuthUsersFn());
       } catch (err) {
         console.error("[admin/members] failed to load accounts", err);
+      }
+      const { data: roleRows, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("user_id, role, status, requested_at")
+        .in("status", ["pending", "approved"]);
+      if (rolesError) {
+        console.error("[admin/members] failed to load roles", rolesError);
+      } else {
+        setRoles(
+          Object.fromEntries(
+            (roleRows ?? [])
+              .sort((a, b) => (a.requested_at < b.requested_at ? 1 : -1))
+              .map((r) => [r.user_id, { role: r.role, status: r.status }]),
+          ),
+        );
       }
     }
   }
@@ -156,6 +183,7 @@ function AdminMembers() {
   }
 
   function handleOpenDialog(member?: Member) {
+    setLinkToUserId("");
     if (member) {
       setEditingMember(member);
       setFormData({
@@ -226,7 +254,7 @@ function AdminMembers() {
         toast.success("Member updated.");
       } else {
         const { error } = await supabase.from("members").insert({
-          user_id: formData.user_id,
+          user_id: linkToUserId || null,
           ri_number: formData.ri_number,
           first_name: formData.first_name,
           last_name: formData.last_name,
@@ -238,7 +266,24 @@ function AdminMembers() {
           status: formData.status,
         });
         if (error) throw error;
-        toast.success("Member added.");
+
+        // Picking an account from the dropdown and completing this form is
+        // itself the confirmation a pending sign-up is waiting on.
+        const roleRow = linkToUserId ? roles[linkToUserId] : null;
+        if (linkToUserId && roleRow?.status === "pending") {
+          await supabase
+            .from("user_roles")
+            .update({
+              status: "approved",
+              decided_at: new Date().toISOString(),
+              decided_by: session?.user.id ?? null,
+            })
+            .eq("user_id", linkToUserId)
+            .eq("status", "pending");
+        }
+        toast.success(
+          linkToUserId ? "Member added and confirmed — portal access granted." : "Member added.",
+        );
       }
       handleCloseDialog();
       load();
@@ -319,6 +364,43 @@ function AdminMembers() {
                 <DialogTitle>{editingMember ? "Edit Member" : "Add New Member"}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
+                {!editingMember && (
+                  <div>
+                    <Label htmlFor="linkAccount">Link to Signed-Up Account</Label>
+                    <Select
+                      value={linkToUserId || "none"}
+                      onValueChange={(v) => {
+                        const nextId = v === "none" ? "" : v;
+                        setLinkToUserId(nextId);
+                        const picked = unlinkedUsers.find((u) => u.id === nextId);
+                        if (picked) setFormData({ ...formData, email: picked.email });
+                      }}
+                    >
+                      <SelectTrigger id="linkAccount">
+                        <SelectValue placeholder="Not linked yet" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">— Not linked yet —</SelectItem>
+                        {unlinkedUsers.map((u) => {
+                          const r = roles[u.id];
+                          const tag = r
+                            ? `${r.status === "pending" ? "Pending" : "Approved"} — ${r.role}`
+                            : "No role request";
+                          return (
+                            <SelectItem key={u.id} value={u.id}>
+                              {u.email} ({tag})
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                    <p className="mt-1.5 text-xs text-muted-foreground">
+                      Pick the account this profile belongs to and fill in the details below to
+                      officially confirm them — this also approves their pending access request, if
+                      any.
+                    </p>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="firstName">First Name *</Label>
@@ -428,7 +510,11 @@ function AdminMembers() {
                     disabled={busyId === "save"}
                     className="flex-1"
                   >
-                    {editingMember ? "Update" : "Add"} Member
+                    {editingMember
+                      ? "Update Member"
+                      : linkToUserId
+                        ? "Confirm & Add Member"
+                        : "Add Member"}
                   </Button>
                   <Button variant="outline" onClick={handleCloseDialog} className="flex-1">
                     Cancel
