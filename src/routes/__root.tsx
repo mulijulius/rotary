@@ -4,6 +4,7 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -132,6 +133,8 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isBackOffice = pathname.startsWith("/admin");
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -143,7 +146,9 @@ function RootComponent() {
         </main>
         <SiteFooter />
       </div>
-      <WhatsAppButton />
+      {/* The public "chat with us" CTA doesn't belong in the back office — it
+          just floats over admin tables and controls there. */}
+      {!isBackOffice && <WhatsAppButton />}
       <Toaster position="top-right" richColors />
     </QueryClientProvider>
 
