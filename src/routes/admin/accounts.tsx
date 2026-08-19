@@ -42,6 +42,8 @@ export const Route = createFileRoute("/admin/accounts")({
 type Account = Database["public"]["Tables"]["accounts"]["Row"];
 type AccountType = Database["public"]["Enums"]["account_type"];
 type NormalSide = Database["public"]["Enums"]["normal_side"];
+type Fund = Database["public"]["Tables"]["funds"]["Row"];
+type GlSettings = Database["public"]["Tables"]["gl_settings"]["Row"];
 
 const ACCOUNT_TYPES: AccountType[] = ["asset", "liability", "equity", "income", "expense"];
 const NORMAL_SIDES: NormalSide[] = ["debit", "credit"];
@@ -63,8 +65,19 @@ function AdminAccounts() {
   });
   const [busyId, setBusyId] = useState<string | null>(null);
 
+  const [funds, setFunds] = useState<Fund[]>([]);
+  const [glSettings, setGlSettings] = useState<GlSettings | null>(null);
+  const [glDraft, setGlDraft] = useState({
+    ar_account_id: null as number | null,
+    ap_account_id: null as number | null,
+    cash_account_id: null as number | null,
+    default_fund_id: null as number | null,
+  });
+  const [savingGl, setSavingGl] = useState(false);
+
   useEffect(() => {
     load();
+    loadGlSettings();
   }, []);
 
   async function load() {
@@ -78,6 +91,49 @@ function AdminAccounts() {
       return;
     }
     setAccounts(data);
+  }
+
+  async function loadGlSettings() {
+    const [{ data: settings, error: settingsErr }, { data: fundsData, error: fundsErr }] = await Promise.all([
+      supabase.from("gl_settings").select("*").eq("id", 1).maybeSingle(),
+      supabase.from("funds").select("*").order("name", { ascending: true }),
+    ]);
+    if (settingsErr) console.error("[admin/accounts] gl_settings load error", settingsErr);
+    if (fundsErr) console.error("[admin/accounts] funds load error", fundsErr);
+    setFunds(fundsData || []);
+    if (settings) {
+      setGlSettings(settings);
+      setGlDraft({
+        ar_account_id: settings.ar_account_id,
+        ap_account_id: settings.ap_account_id,
+        cash_account_id: settings.cash_account_id,
+        default_fund_id: settings.default_fund_id,
+      });
+    }
+  }
+
+  async function handleSaveGlSettings() {
+    setSavingGl(true);
+    try {
+      const { error } = await supabase
+        .from("gl_settings")
+        .update({
+          ar_account_id: glDraft.ar_account_id,
+          ap_account_id: glDraft.ap_account_id,
+          cash_account_id: glDraft.cash_account_id,
+          default_fund_id: glDraft.default_fund_id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", 1);
+      if (error) throw error;
+      toast.success("GL settings saved. Bills, invoices and payments will now post using these defaults.");
+      loadGlSettings();
+    } catch (err) {
+      console.error("[admin/accounts] gl_settings save error", err);
+      toast.error(err instanceof Error ? err.message : "Failed to save GL settings.");
+    } finally {
+      setSavingGl(false);
+    }
   }
 
   function handleOpenDialog(account?: Account) {
@@ -291,6 +347,100 @@ function AdminAccounts() {
             </DialogContent>
           </Dialog>
         )}
+      </div>
+
+      <div className="mt-6 rounded-2xl border border-border bg-card p-4 shadow-[var(--shadow-card)]">
+        <h2 className="text-lg font-semibold text-foreground">GL Settings</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          These defaults connect bills, invoices and payments to the ledger automatically: recording a bill
+          debits its expense/asset accounts and credits Accounts Payable, issuing an invoice debits Accounts
+          Receivable and credits income, and payments move cash and settle the balance.
+        </p>
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-4">
+          <div>
+            <Label>Accounts Receivable *</Label>
+            <Select
+              value={glDraft.ar_account_id ? glDraft.ar_account_id.toString() : ""}
+              onValueChange={(v) => setGlDraft({ ...glDraft, ar_account_id: parseInt(v) })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select account" />
+              </SelectTrigger>
+              <SelectContent>
+                {(accounts || []).filter((a) => a.is_active).map((a) => (
+                  <SelectItem key={a.id} value={a.id.toString()}>
+                    {a.code} · {a.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Accounts Payable *</Label>
+            <Select
+              value={glDraft.ap_account_id ? glDraft.ap_account_id.toString() : ""}
+              onValueChange={(v) => setGlDraft({ ...glDraft, ap_account_id: parseInt(v) })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select account" />
+              </SelectTrigger>
+              <SelectContent>
+                {(accounts || []).filter((a) => a.is_active).map((a) => (
+                  <SelectItem key={a.id} value={a.id.toString()}>
+                    {a.code} · {a.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Default Cash/Bank Account</Label>
+            <Select
+              value={glDraft.cash_account_id ? glDraft.cash_account_id.toString() : ""}
+              onValueChange={(v) => setGlDraft({ ...glDraft, cash_account_id: parseInt(v) })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select account" />
+              </SelectTrigger>
+              <SelectContent>
+                {(accounts || []).filter((a) => a.is_active).map((a) => (
+                  <SelectItem key={a.id} value={a.id.toString()}>
+                    {a.code} · {a.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Default Fund *</Label>
+            <Select
+              value={glDraft.default_fund_id ? glDraft.default_fund_id.toString() : ""}
+              onValueChange={(v) => setGlDraft({ ...glDraft, default_fund_id: parseInt(v) })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select fund" />
+              </SelectTrigger>
+              <SelectContent>
+                {funds.map((f) => (
+                  <SelectItem key={f.id} value={f.id.toString()}>
+                    {f.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="mt-4 flex items-center gap-3">
+          <Button onClick={handleSaveGlSettings} disabled={savingGl} size="sm">
+            {savingGl ? "Saving…" : "Save GL Settings"}
+          </Button>
+          {(!glSettings?.ar_account_id || !glSettings?.ap_account_id || !glSettings?.default_fund_id) && (
+            <span className="text-xs text-destructive">
+              Accounts Receivable, Accounts Payable and a default Fund must be set before bills, invoices or
+              payments can post to the ledger.
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-card)]">
