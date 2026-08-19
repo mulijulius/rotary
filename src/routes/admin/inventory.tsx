@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Plus, Edit2, Trash2, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Edit2, Trash2, ArrowUp, ArrowDown, Upload, ImageOff } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -96,7 +96,11 @@ function AdminInventory() {
     depreciation_years: null,
     is_for_sale: false,
     sale_price: null,
+    photo_url: null as string | null,
   });
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -139,7 +143,10 @@ function AdminInventory() {
         depreciation_years: item.depreciation_years,
         is_for_sale: (item as any).is_for_sale ?? false,
         sale_price: (item as any).sale_price ?? null,
+        photo_url: (item as any).photo_url ?? null,
       });
+      setPhotoPreview((item as any).photo_url ?? null);
+      setPhotoFile(null);
     } else {
       setEditingItem(null);
       setFormData({
@@ -162,7 +169,10 @@ function AdminInventory() {
         depreciation_years: null,
         is_for_sale: false,
         sale_price: null,
+        photo_url: null,
       });
+      setPhotoPreview(null);
+      setPhotoFile(null);
     }
     setOpenDialog(true);
   }
@@ -170,6 +180,42 @@ function AdminInventory() {
   function handleCloseDialog() {
     setOpenDialog(false);
     setEditingItem(null);
+    setPhotoFile(null);
+    setPhotoPreview(null);
+  }
+
+  function handlePhotoSelected(file: File | null) {
+    if (!file) {
+      setPhotoFile(null);
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please choose an image file.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be under 5MB.");
+      return;
+    }
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  }
+
+  async function uploadPhotoIfNeeded(itemId: number): Promise<string | null> {
+    if (!photoFile) return formData.photo_url;
+    setUploadingPhoto(true);
+    try {
+      const ext = photoFile.name.split(".").pop() || "jpg";
+      const path = `${itemId}/${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("inventory-photos")
+        .upload(path, photoFile, { upsert: true });
+      if (uploadError) throw uploadError;
+      const { data } = supabase.storage.from("inventory-photos").getPublicUrl(path);
+      return data.publicUrl;
+    } finally {
+      setUploadingPhoto(false);
+    }
   }
 
   async function handleSaveItem() {
@@ -185,6 +231,7 @@ function AdminInventory() {
     setBusyId("save");
     try {
       if (editingItem) {
+        const photoUrl = await uploadPhotoIfNeeded(editingItem.id);
         const { error } = await supabase
           .from("inventory_items")
           .update({
@@ -205,12 +252,15 @@ function AdminInventory() {
             depreciation_years: formData.depreciation_years,
             is_for_sale: formData.is_for_sale,
             sale_price: formData.is_for_sale ? formData.sale_price : null,
+            photo_url: photoUrl,
           })
           .eq("id", editingItem.id);
         if (error) throw error;
         toast.success("Item updated successfully.");
       } else {
-        const { error } = await supabase.from("inventory_items").insert({
+        const { data: inserted, error } = await supabase
+          .from("inventory_items")
+          .insert({
           name: formData.name,
           category: formData.category,
           description: formData.description,
@@ -228,8 +278,21 @@ function AdminInventory() {
           depreciation_years: formData.depreciation_years,
           is_for_sale: formData.is_for_sale,
           sale_price: formData.is_for_sale ? formData.sale_price : null,
-        });
+        })
+          .select()
+          .single();
         if (error) throw error;
+
+        if (photoFile && inserted) {
+          const photoUrl = await uploadPhotoIfNeeded(inserted.id);
+          if (photoUrl) {
+            const { error: photoErr } = await supabase
+              .from("inventory_items")
+              .update({ photo_url: photoUrl })
+              .eq("id", inserted.id);
+            if (photoErr) console.error("[admin/inventory] photo attach error", photoErr);
+          }
+        }
         toast.success("Item added successfully.");
       }
       handleCloseDialog();
@@ -493,6 +556,45 @@ function AdminInventory() {
                 </div>
               )}
 
+              <div>
+                <Label>Item Photo</Label>
+                <div className="mt-1 flex items-center gap-4">
+                  <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted">
+                    {photoPreview ? (
+                      <img src={photoPreview} alt="Item preview" className="h-full w-full object-cover" />
+                    ) : (
+                      <ImageOff className="h-6 w-6 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-md border border-input px-3 py-2 text-sm font-medium hover:bg-muted">
+                      <Upload className="h-4 w-4" />
+                      {photoPreview ? "Replace photo" : "Upload photo"}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => handlePhotoSelected(e.target.files?.[0] || null)}
+                      />
+                    </label>
+                    {photoPreview && (
+                      <button
+                        type="button"
+                        className="text-xs text-muted-foreground hover:text-destructive text-left"
+                        onClick={() => {
+                          setPhotoFile(null);
+                          setPhotoPreview(null);
+                          setFormData({ ...formData, photo_url: null });
+                        }}
+                      >
+                        Remove photo
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">JPG, PNG, or WebP, up to 5MB.</p>
+              </div>
+
               <div className="rounded-lg border border-border p-3">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -534,8 +636,8 @@ function AdminInventory() {
                 <Button variant="outline" onClick={handleCloseDialog}>
                   Cancel
                 </Button>
-                <Button onClick={handleSaveItem} disabled={busyId === "save"}>
-                  {editingItem ? "Update" : "Add"} Item
+                <Button onClick={handleSaveItem} disabled={busyId === "save" || uploadingPhoto}>
+                  {uploadingPhoto ? "Uploading photo…" : busyId === "save" ? "Saving…" : `${editingItem ? "Update" : "Add"} Item`}
                 </Button>
               </div>
             </div>
@@ -634,6 +736,7 @@ function AdminInventory() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>Photo</TableHead>
               <TableHead>Item Name</TableHead>
               <TableHead>Category</TableHead>
               <TableHead>Serial #</TableHead>
@@ -649,6 +752,19 @@ function AdminInventory() {
             {items && items.length > 0 ? (
               items.map((item) => (
                 <TableRow key={item.id}>
+                  <TableCell>
+                    <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-md border border-border bg-muted">
+                      {(item as any).photo_url ? (
+                        <img
+                          src={(item as any).photo_url}
+                          alt={item.name}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <ImageOff className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell className="font-medium">{item.name}</TableCell>
                   <TableCell>
                     <span className={`px-2 py-1 rounded text-xs font-semibold ${categoryColors[item.category]}`}>
@@ -702,7 +818,7 @@ function AdminInventory() {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
                   No inventory items. Add one to get started.
                 </TableCell>
               </TableRow>
