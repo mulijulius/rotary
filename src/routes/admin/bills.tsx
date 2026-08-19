@@ -70,11 +70,11 @@ function AdminBills() {
         </Button>
       </div>
 
-      <div className="mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-card)]">
+      <div className="mt-6 overflow-x-auto rounded-2xl border border-border bg-card shadow-[var(--shadow-card)]">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Bill No</TableHead>
+              <TableHead className="whitespace-nowrap">Bill No</TableHead>
               <TableHead>Vendor</TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Due Date</TableHead>
