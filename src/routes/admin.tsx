@@ -19,6 +19,7 @@ type NavItem = { to: string; label: string };
 const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
   admin: [
     { to: "/admin", label: "Overview" },
+    { to: "/admin/profile", label: "My Profile" },
     // Membership Module
     { to: "/admin/members", label: "Members" },
     { to: "/admin/visitors", label: "Visitors" },
@@ -43,6 +44,7 @@ const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
   ],
   treasurer: [
     { to: "/admin", label: "Overview" },
+    { to: "/admin/profile", label: "My Profile" },
     { to: "/admin/fiscal-years", label: "Fiscal Years" },
     { to: "/admin/accounts", label: "Chart of Accounts" },
     { to: "/admin/journal-entries", label: "Journal Entries" },
@@ -56,6 +58,7 @@ const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
   ],
   secretary: [
     { to: "/admin", label: "Overview" },
+    { to: "/admin/profile", label: "My Profile" },
     { to: "/admin/members", label: "Members" },
     { to: "/admin/visitors", label: "Visitors" },
     { to: "/admin/meetings", label: "Meetings" },
@@ -65,6 +68,7 @@ const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
   ],
   editor: [
     { to: "/admin", label: "Overview" },
+    { to: "/admin/profile", label: "My Profile" },
     { to: "/admin/projects", label: "Projects" },
     { to: "/admin/news", label: "News Articles" },
     { to: "/admin/gallery", label: "Gallery" },
@@ -72,6 +76,7 @@ const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
   ],
   member: [
     { to: "/admin", label: "Overview" },
+    { to: "/admin/profile", label: "My Profile" },
     { to: "/admin/shop", label: "Shop" },
   ],
 };
