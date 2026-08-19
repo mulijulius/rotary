@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Plus, Edit2, QrCode } from "lucide-react";
+import { Plus, Edit2, QrCode, Download, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import type { Database } from "@/integrations/supabase/types";
+import { QrCodeImage, downloadQrCode } from "@/components/site/QrCodeImage";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,15 +43,24 @@ export const Route = createFileRoute("/admin/meetings")({
 type Meeting = Database["public"]["Tables"]["meetings"]["Row"];
 type MeetingType = Database["public"]["Enums"]["meeting_type"];
 
-type MeetingFormData = Omit<Meeting, "id" | "created_at">;
+type MeetingFormData = Omit<Meeting, "id" | "created_at" | "qr_token" | "qr_issued_at">;
 
 const MEETING_TYPES: MeetingType[] = ["weekly", "board", "event", "project", "fellowship"];
+
+// The URL embedded in a meeting's QR code. A member scans this (either
+// with their phone's camera app, which just opens the page, or with the
+// in-app scanner on /admin/scan) to self-record their own attendance.
+function checkInUrl(meeting: Meeting): string {
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  return `${origin}/admin/scan?m=${meeting.id}&t=${meeting.qr_token}`;
+}
 
 function AdminMeetings() {
   const { role } = useAuth();
   const [meetings, setMeetings] = useState<Meeting[] | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
+  const [qrMeeting, setQrMeeting] = useState<Meeting | null>(null);
   const [formData, setFormData] = useState<MeetingFormData>({
     title: "",
     meeting_type: "weekly",
@@ -82,6 +92,8 @@ function AdminMeetings() {
       return;
     }
     setMeetings(data);
+    // Keep the open QR dialog's data fresh (e.g. after a regenerate).
+    setQrMeeting((prev) => (prev ? (data.find((m) => m.id === prev.id) ?? null) : null));
   }
 
   function handleOpenDialog(meeting?: Meeting) {
@@ -209,8 +221,37 @@ function AdminMeetings() {
     }
   }
 
+  // Rotating the token invalidates any previously printed/displayed QR
+  // code for this meeting — useful if it leaked or was screenshotted
+  // after a prior meeting.
+  async function handleRegenerateQr(meeting: Meeting) {
+    if (
+      !confirm(
+        "Generate a new QR code for this meeting? Any previously printed or displayed code will stop working.",
+      )
+    )
+      return;
+    setBusyId(`qr-${meeting.id}`);
+    try {
+      const { error } = await supabase
+        .from("meetings")
+        .update({ qr_token: crypto.randomUUID(), qr_issued_at: new Date().toISOString() })
+        .eq("id", meeting.id);
+      if (error) throw error;
+      toast.success("New QR code generated.");
+      load();
+    } catch (err) {
+      console.error("[admin/meetings] regenerate QR error", err);
+      toast.error("Failed to generate a new QR code.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   if (role && !["admin", "secretary"].includes(role)) {
-    return <div className="text-muted-foreground">You don't have access to meetings management.</div>;
+    return (
+      <div className="text-muted-foreground">You don't have access to meetings management.</div>
+    );
   }
 
   return (
@@ -218,7 +259,9 @@ function AdminMeetings() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Meetings</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Create and manage club meetings, set attendance requirements.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Create and manage club meetings, set attendance requirements.
+          </p>
         </div>
         {role === "admin" && (
           <Dialog open={openDialog} onOpenChange={setOpenDialog}>
@@ -245,13 +288,20 @@ function AdminMeetings() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="type">Type</Label>
-                    <Select value={formData.meeting_type} onValueChange={(v) => setFormData({ ...formData, meeting_type: v as MeetingType })}>
+                    <Select
+                      value={formData.meeting_type}
+                      onValueChange={(v) =>
+                        setFormData({ ...formData, meeting_type: v as MeetingType })
+                      }
+                    >
                       <SelectTrigger id="type">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         {MEETING_TYPES.map((t) => (
-                          <SelectItem key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</SelectItem>
+                          <SelectItem key={t} value={t}>
+                            {t.charAt(0).toUpperCase() + t.slice(1)}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -282,7 +332,9 @@ function AdminMeetings() {
                       id="endTime"
                       type="time"
                       value={formData.end_time || ""}
-                      onChange={(e) => setFormData({ ...formData, end_time: e.target.value || null })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, end_time: e.target.value || null })
+                      }
                     />
                   </div>
                 </div>
@@ -310,21 +362,33 @@ function AdminMeetings() {
                     <Checkbox
                       id="mandatory"
                       checked={formData.is_mandatory}
-                      onCheckedChange={(checked) => setFormData({ ...formData, is_mandatory: checked === true })}
+                      onCheckedChange={(checked) =>
+                        setFormData({ ...formData, is_mandatory: checked === true })
+                      }
                     />
-                    <Label htmlFor="mandatory" className="cursor-pointer">Mandatory attendance</Label>
+                    <Label htmlFor="mandatory" className="cursor-pointer">
+                      Mandatory attendance
+                    </Label>
                   </div>
                   <div className="flex items-center gap-2">
                     <Checkbox
                       id="public"
                       checked={formData.is_public}
-                      onCheckedChange={(checked) => setFormData({ ...formData, is_public: checked === true })}
+                      onCheckedChange={(checked) =>
+                        setFormData({ ...formData, is_public: checked === true })
+                      }
                     />
-                    <Label htmlFor="public" className="cursor-pointer">Public (visible to non-members)</Label>
+                    <Label htmlFor="public" className="cursor-pointer">
+                      Public (visible to non-members)
+                    </Label>
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button onClick={handleSaveMeeting} disabled={busyId === "save"} className="flex-1">
+                  <Button
+                    onClick={handleSaveMeeting}
+                    disabled={busyId === "save"}
+                    className="flex-1"
+                  >
                     {editingMeeting ? "Update" : "Create"} Meeting
                   </Button>
                   <Button variant="outline" onClick={handleCloseDialog} className="flex-1">
@@ -401,7 +465,14 @@ function AdminMeetings() {
                       <QrCode className="h-4 w-4" />
                     </button>
                     <button
-                      onClick={() => window.location.href = `/admin/attendance/${m.id}`}
+                      onClick={() => setQrMeeting(m)}
+                      title="Show meeting QR code"
+                      className="px-2 py-1 text-xs rounded border border-gold/40 text-gold-deep hover:bg-gold/10 transition-colors"
+                    >
+                      QR
+                    </button>
+                    <button
+                      onClick={() => (window.location.href = `/admin/attendance/${m.id}`)}
                       title="Manage attendance"
                       className="px-2 py-1 text-xs rounded border border-blue-200 text-blue-700 hover:bg-blue-50 transition-colors"
                     >
@@ -414,6 +485,52 @@ function AdminMeetings() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Meeting QR code dialog — members scan this from their own portal
+          (/admin/scan) to self-record attendance while the check-in
+          window above is open. */}
+      <Dialog open={qrMeeting !== null} onOpenChange={(v) => !v && setQrMeeting(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{qrMeeting?.title} — Check-in QR</DialogTitle>
+          </DialogHeader>
+          {qrMeeting && (
+            <div className="flex flex-col items-center gap-4">
+              <div className="rounded-xl border border-border bg-white p-4">
+                <QrCodeImage value={checkInUrl(qrMeeting)} size={220} />
+              </div>
+              <p className="text-center text-xs text-muted-foreground">
+                {qrMeeting.checkin_opens_at
+                  ? "Check-in window is open — members can scan this now from Back Office → Scan Attendance."
+                  : "Check-in window is closed. Open it (QR icon in the table) before members can check in."}
+              </p>
+              <div className="flex w-full gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 gap-1.5"
+                  onClick={() =>
+                    downloadQrCode(checkInUrl(qrMeeting), `${qrMeeting.title}-checkin-qr`)
+                  }
+                >
+                  <Download className="h-3.5 w-3.5" /> Download
+                </Button>
+                {role === "admin" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 gap-1.5"
+                    disabled={busyId === `qr-${qrMeeting.id}`}
+                    onClick={() => handleRegenerateQr(qrMeeting)}
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" /> Regenerate
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
