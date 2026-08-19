@@ -1,10 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
-import { Plus, Edit2, Copy, RefreshCw } from "lucide-react";
+import { Plus, Edit2, Copy, RefreshCw, Link2, Unlink } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { listAuthUsers } from "@/lib/admin.functions";
+import { linkMemberAccount, unlinkMemberAccount } from "@/lib/member-requests";
 import type { Database } from "@/integrations/supabase/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -39,6 +42,7 @@ export const Route = createFileRoute("/admin/members")({
 });
 
 type Member = Database["public"]["Tables"]["members"]["Row"];
+type AuthUser = { id: string; email: string; createdAt: string };
 
 const statusVariant: Record<Member["status"], "default" | "secondary" | "outline" | "destructive"> =
   {
@@ -49,13 +53,24 @@ const statusVariant: Record<Member["status"], "default" | "secondary" | "outline
     terminated: "destructive",
   };
 
-type MemberFormData = Omit<Member, "id" | "qr_token" | "qr_issued_at" | "created_at" | "updated_at">;
+type MemberFormData = Omit<
+  Member,
+  "id" | "qr_token" | "qr_issued_at" | "created_at" | "updated_at"
+>;
 
 function AdminMembers() {
   const { role } = useAuth();
+  const listAuthUsersFn = useServerFn(listAuthUsers);
   const [members, setMembers] = useState<Member[] | null>(null);
+  // Only fetched for admins (listAuthUsers is admin-only server-side); used
+  // to show which account, if any, each member profile is linked to, and
+  // to offer unlinked accounts when linking one.
+  const [authUsers, setAuthUsers] = useState<AuthUser[] | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
+  const [linkMember, setLinkMember] = useState<Member | null>(null);
+  const [linkUserId, setLinkUserId] = useState<string>("");
+  const [linkBusy, setLinkBusy] = useState(false);
   const [formData, setFormData] = useState<MemberFormData>({
     user_id: null,
     ri_number: "",
@@ -73,7 +88,9 @@ function AdminMembers() {
 
   useEffect(() => {
     load();
-  }, []);
+    // Mount-only; role doesn't change identity mid-session here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [role]);
 
   async function load() {
     const { data, error } = await supabase
@@ -86,6 +103,56 @@ function AdminMembers() {
       return;
     }
     setMembers(data);
+
+    if (role === "admin") {
+      try {
+        setAuthUsers(await listAuthUsersFn());
+      } catch (err) {
+        console.error("[admin/members] failed to load accounts", err);
+      }
+    }
+  }
+
+  function openLinkDialog(member: Member) {
+    setLinkMember(member);
+    setLinkUserId("");
+  }
+
+  function closeLinkDialog() {
+    setLinkMember(null);
+  }
+
+  async function handleLinkAccount() {
+    if (!linkMember || !linkUserId) {
+      toast.error("Pick an account to link.");
+      return;
+    }
+    setLinkBusy(true);
+    try {
+      await linkMemberAccount(linkMember.id, linkUserId);
+      toast.success("Account linked. They can now use the member portal.");
+      closeLinkDialog();
+      load();
+    } catch (err) {
+      console.error("[admin/members] link error", err);
+      toast.error(err instanceof Error ? err.message : "Failed to link account.");
+    } finally {
+      setLinkBusy(false);
+    }
+  }
+
+  async function handleUnlinkAccount(member: Member) {
+    setBusyId(`unlink-${member.id}`);
+    try {
+      await unlinkMemberAccount(member.id);
+      toast.success("Account unlinked from this member.");
+      load();
+    } catch (err) {
+      console.error("[admin/members] unlink error", err);
+      toast.error(err instanceof Error ? err.message : "Failed to unlink.");
+    } finally {
+      setBusyId(null);
+    }
   }
 
   function handleOpenDialog(member?: Member) {
@@ -127,7 +194,13 @@ function AdminMembers() {
   }
 
   async function handleSaveMember() {
-    if (!formData.ri_number || !formData.first_name || !formData.last_name || !formData.email || !formData.phone) {
+    if (
+      !formData.ri_number ||
+      !formData.first_name ||
+      !formData.last_name ||
+      !formData.email ||
+      !formData.phone
+    ) {
       toast.error("Please fill in all required fields.");
       return;
     }
@@ -221,12 +294,17 @@ function AdminMembers() {
     return <div className="text-muted-foreground">You don't have access to member management.</div>;
   }
 
+  const linkedUserIds = new Set((members ?? []).map((m) => m.user_id).filter(Boolean) as string[]);
+  const unlinkedUsers = (authUsers ?? []).filter((u) => !linkedUserIds.has(u.id));
+
   return (
     <div>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Members</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Manage club roster and member records.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Manage club roster and member records.
+          </p>
         </div>
         {role === "admin" && (
           <Dialog open={openDialog} onOpenChange={setOpenDialog}>
@@ -314,7 +392,12 @@ function AdminMembers() {
                 </div>
                 <div>
                   <Label htmlFor="status">Status</Label>
-                  <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v as Member["status"] })}>
+                  <Select
+                    value={formData.status}
+                    onValueChange={(v) =>
+                      setFormData({ ...formData, status: v as Member["status"] })
+                    }
+                  >
                     <SelectTrigger id="status">
                       <SelectValue />
                     </SelectTrigger>
@@ -332,13 +415,19 @@ function AdminMembers() {
                   <Textarea
                     id="photoUrl"
                     value={formData.photo_url || ""}
-                    onChange={(e) => setFormData({ ...formData, photo_url: e.target.value || null })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, photo_url: e.target.value || null })
+                    }
                     placeholder="https://example.com/photo.jpg"
                     rows={2}
                   />
                 </div>
                 <div className="flex gap-2">
-                  <Button onClick={handleSaveMember} disabled={busyId === "save"} className="flex-1">
+                  <Button
+                    onClick={handleSaveMember}
+                    disabled={busyId === "save"}
+                    className="flex-1"
+                  >
                     {editingMember ? "Update" : "Add"} Member
                   </Button>
                   <Button variant="outline" onClick={handleCloseDialog} className="flex-1">
@@ -361,20 +450,21 @@ function AdminMembers() {
               <TableHead>Phone</TableHead>
               <TableHead>Joined</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Account</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {members === null && (
               <TableRow>
-                <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
+                <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
                   Loading…
                 </TableCell>
               </TableRow>
             )}
             {members?.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
+                <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
                   No members on file yet.
                 </TableCell>
               </TableRow>
@@ -392,6 +482,35 @@ function AdminMembers() {
                 </TableCell>
                 <TableCell>
                   <Badge variant={statusVariant[m.status]}>{m.status.replaceAll("_", " ")}</Badge>
+                </TableCell>
+                <TableCell>
+                  {m.user_id ? (
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="whitespace-nowrap">
+                        {authUsers?.find((u) => u.id === m.user_id)?.email ?? "Linked"}
+                      </Badge>
+                      {role === "admin" && (
+                        <button
+                          onClick={() => handleUnlinkAccount(m)}
+                          disabled={busyId === `unlink-${m.id}`}
+                          title="Unlink Account"
+                          className="p-1 text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
+                        >
+                          <Unlink className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                  ) : role === "admin" ? (
+                    <button
+                      onClick={() => openLinkDialog(m)}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 px-2.5 py-1 text-xs font-semibold text-primary transition-colors hover:bg-primary/10"
+                    >
+                      <Link2 className="h-3.5 w-3.5" />
+                      Link account
+                    </button>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">Not linked</span>
+                  )}
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex gap-2 justify-end">
@@ -432,7 +551,10 @@ function AdminMembers() {
                       </button>
                     )}
                     {role === "admin" && m.status === "active" && (
-                      <Select value={m.status} onValueChange={(v) => handleChangeStatus(m, v as Member["status"])}>
+                      <Select
+                        value={m.status}
+                        onValueChange={(v) => handleChangeStatus(m, v as Member["status"])}
+                      >
                         <SelectTrigger className="h-8 w-24">
                           <SelectValue />
                         </SelectTrigger>
@@ -452,6 +574,58 @@ function AdminMembers() {
           </TableBody>
         </Table>
       </div>
+
+      <Dialog open={!!linkMember} onOpenChange={(open) => !open && closeLinkDialog()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              Link account — {linkMember?.first_name} {linkMember?.last_name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {unlinkedUsers.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No unlinked accounts. They need to sign up first (Signup page), or check{" "}
+                <span className="font-semibold">Admin → Users &amp; Roles</span> for pending
+                requests.
+              </p>
+            ) : (
+              <div>
+                <Label>Account</Label>
+                <Select value={linkUserId} onValueChange={setLinkUserId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose an account…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {unlinkedUsers.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className="flex gap-2">
+              <Button
+                className="flex-1"
+                onClick={handleLinkAccount}
+                disabled={linkBusy || !linkUserId}
+              >
+                {linkBusy ? "Linking…" : "Link account"}
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={closeLinkDialog}
+                disabled={linkBusy}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
