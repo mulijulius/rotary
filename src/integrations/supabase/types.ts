@@ -1603,6 +1603,8 @@ export type Database = {
           is_public: boolean
           meeting_date: string
           meeting_type: Database["public"]["Enums"]["meeting_type"]
+          qr_issued_at: string
+          qr_token: string
           start_time: string
           title: string
           venue: string | null
@@ -1619,6 +1621,8 @@ export type Database = {
           is_public?: boolean
           meeting_date: string
           meeting_type?: Database["public"]["Enums"]["meeting_type"]
+          qr_issued_at?: string
+          qr_token?: string
           start_time: string
           title: string
           venue?: string | null
@@ -1635,6 +1639,8 @@ export type Database = {
           is_public?: boolean
           meeting_date?: string
           meeting_type?: Database["public"]["Enums"]["meeting_type"]
+          qr_issued_at?: string
+          qr_token?: string
           start_time?: string
           title?: string
           venue?: string | null
