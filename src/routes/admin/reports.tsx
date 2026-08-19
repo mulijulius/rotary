@@ -263,13 +263,13 @@ function AdminFinancialReports() {
 
       <div className="mt-6">
         <Tabs defaultValue="income-statement" className="w-full">
-          <TabsList className="grid w-full grid-cols-7">
-            <TabsTrigger value="income-statement">Income Statement</TabsTrigger>
-            <TabsTrigger value="balance-sheet">Balance Sheet</TabsTrigger>
-            <TabsTrigger value="cash-flow">Cash Flow</TabsTrigger>
-            <TabsTrigger value="trial-balance">Trial Balance</TabsTrigger>
-            <TabsTrigger value="member-balances">Member Balances</TabsTrigger>
-            <TabsTrigger value="attendance">Attendance</TabsTrigger>
+          <TabsList className="flex w-full justify-start gap-1 overflow-x-auto">
+            <TabsTrigger value="income-statement" className="shrink-0">Income Statement</TabsTrigger>
+            <TabsTrigger value="balance-sheet" className="shrink-0">Balance Sheet</TabsTrigger>
+            <TabsTrigger value="cash-flow" className="shrink-0">Cash Flow</TabsTrigger>
+            <TabsTrigger value="trial-balance" className="shrink-0">Trial Balance</TabsTrigger>
+            <TabsTrigger value="member-balances" className="shrink-0">Member Balances</TabsTrigger>
+            <TabsTrigger value="attendance" className="shrink-0">Attendance</TabsTrigger>
           </TabsList>
 
           {/* Income Statement */}
