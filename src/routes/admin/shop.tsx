@@ -179,7 +179,19 @@ function MemberShop() {
           <p className="text-muted-foreground">No products are listed for sale right now.</p>
         )}
         {products?.map((item) => (
-          <Card key={item.id} className="p-4">
+          <Card key={item.id} className="overflow-hidden p-0">
+            <div className="flex h-36 w-full items-center justify-center bg-muted">
+              {(item as any).photo_url ? (
+                <img
+                  src={(item as any).photo_url}
+                  alt={item.name}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <Package className="h-8 w-8 text-muted-foreground" />
+              )}
+            </div>
+            <div className="p-4">
             <div className="flex items-start justify-between gap-2">
               <div>
                 <p className="font-semibold text-foreground">{item.name}</p>
@@ -187,7 +199,6 @@ function MemberShop() {
                   <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{item.description}</p>
                 )}
               </div>
-              <Package className="h-5 w-5 shrink-0 text-muted-foreground" />
             </div>
             <div className="mt-3 flex items-center justify-between">
               <span className="text-lg font-bold text-foreground">
@@ -206,6 +217,7 @@ function MemberShop() {
               <ShoppingCart className="h-4 w-4" />
               Buy
             </Button>
+            </div>
           </Card>
         ))}
       </div>
