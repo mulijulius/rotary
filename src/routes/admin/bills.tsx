@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { Plus, Eye, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Plus, Eye, Trash2, Banknote, Ban } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -43,6 +43,7 @@ type BillStatus = Database["public"]["Enums"]["bill_status"];
 type Vendor = Database["public"]["Tables"]["vendors"]["Row"];
 type FiscalYear = Database["public"]["Tables"]["fiscal_years"]["Row"];
 type Account = Database["public"]["Tables"]["accounts"]["Row"];
+type PaymentMethod = Database["public"]["Enums"]["payment_method"];
 
 const STATUS_COLORS: Record<BillStatus, string> = {
   draft: "bg-gray-100 text-gray-800",
@@ -75,6 +76,7 @@ function makeDocNo(prefix: string) {
 function AdminBills() {
   const { role } = useAuth();
   const [bills, setBills] = useState<(Bill & { total?: number })[] | null>(null);
+  const [paidByBill, setPaidByBill] = useState<Record<number, number>>({});
 
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [fiscalYears, setFiscalYears] = useState<FiscalYear[]>([]);
@@ -93,6 +95,19 @@ function AdminBills() {
     status: "draft" as BillStatus,
   });
   const [lines, setLines] = useState<LineDraft[]>([emptyLine()]);
+
+  const [paymentBill, setPaymentBill] = useState<(Bill & { total?: number }) | null>(null);
+  const [paymentForm, setPaymentForm] = useState({
+    payment_date: new Date().toISOString().slice(0, 10),
+    method: "bank_transfer" as PaymentMethod,
+    deposit_account_id: 0,
+    amount: 0,
+    reference: "",
+  });
+  const [recordingPayment, setRecordingPayment] = useState(false);
+  const [voidingId, setVoidingId] = useState<number | null>(null);
+
+  const cashAccounts = useMemo(() => accounts.filter((a) => a.type === "asset"), [accounts]);
 
   useEffect(() => {
     load();
@@ -114,6 +129,21 @@ function AdminBills() {
       total: (bill.bill_lines || []).reduce((sum: number, l: any) => sum + Number(l.amount), 0),
     }));
     setBills(withTotals);
+
+    const { data: allocations, error: allocError } = await supabase
+      .from("payment_allocations")
+      .select("bill_id, amount_applied, payment:payments(voided)")
+      .not("bill_id", "is", null);
+    if (allocError) {
+      console.error("[admin/bills] allocations load error", allocError);
+    } else {
+      const paid: Record<number, number> = {};
+      for (const row of (allocations as any[]) || []) {
+        if (row.payment?.voided) continue;
+        paid[row.bill_id] = (paid[row.bill_id] || 0) + Number(row.amount_applied);
+      }
+      setPaidByBill(paid);
+    }
   }
 
   async function loadReferenceData() {
@@ -237,6 +267,85 @@ function AdminBills() {
       toast.error("Failed to record bill.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  function handleOpenPaymentDialog(bill: Bill & { total?: number }) {
+    const balance = (bill.total ?? 0) - (paidByBill[bill.id] || 0);
+    setPaymentBill(bill);
+    setPaymentForm({
+      payment_date: new Date().toISOString().slice(0, 10),
+      method: "bank_transfer",
+      deposit_account_id: cashAccounts[0]?.id || 0,
+      amount: Math.max(balance, 0),
+      reference: "",
+    });
+  }
+
+  function handleClosePaymentDialog() {
+    setPaymentBill(null);
+  }
+
+  async function handleRecordPayment() {
+    if (!paymentBill) return;
+    if (!paymentForm.deposit_account_id) {
+      toast.error("Please select the cash/bank account this was paid from.");
+      return;
+    }
+    if (!paymentForm.amount || paymentForm.amount <= 0) {
+      toast.error("Please enter a payment amount greater than zero.");
+      return;
+    }
+    setRecordingPayment(true);
+    try {
+      const paymentNo = makeDocNo("PMT");
+      const { data: payment, error: paymentError } = await supabase
+        .from("payments")
+        .insert({
+          payment_no: paymentNo,
+          payment_type: "disbursement",
+          vendor_id: paymentBill.vendor_id,
+          payment_date: paymentForm.payment_date,
+          method: paymentForm.method,
+          reference: paymentForm.reference || null,
+          amount: paymentForm.amount,
+          deposit_account_id: paymentForm.deposit_account_id,
+        })
+        .select()
+        .single();
+      if (paymentError) throw paymentError;
+
+      const { error: allocError } = await supabase.from("payment_allocations").insert({
+        payment_id: payment.id,
+        bill_id: paymentBill.id,
+        amount_applied: paymentForm.amount,
+      });
+      if (allocError) throw allocError;
+
+      toast.success("Payment recorded. Accounts Payable and cash have been updated.");
+      handleClosePaymentDialog();
+      load();
+    } catch (err) {
+      console.error("[admin/bills] payment error", err);
+      toast.error(err instanceof Error ? err.message : "Failed to record payment.");
+    } finally {
+      setRecordingPayment(false);
+    }
+  }
+
+  async function handleVoidBill(bill: Bill) {
+    if (!confirm(`Void bill ${bill.bill_no}? This reverses its journal entry; it cannot be undone.`)) return;
+    setVoidingId(bill.id);
+    try {
+      const { error } = await supabase.from("bills").update({ status: "void" }).eq("id", bill.id);
+      if (error) throw error;
+      toast.success("Bill voided and its journal entry reversed.");
+      load();
+    } catch (err) {
+      console.error("[admin/bills] void error", err);
+      toast.error(err instanceof Error ? err.message : "Failed to void bill.");
+    } finally {
+      setVoidingId(null);
     }
   }
 
@@ -446,6 +555,8 @@ function AdminBills() {
               <TableHead>Date</TableHead>
               <TableHead>Due Date</TableHead>
               <TableHead>Amount</TableHead>
+              <TableHead>Paid</TableHead>
+              <TableHead>Balance</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -453,51 +564,178 @@ function AdminBills() {
           <TableBody>
             {bills === null && (
               <TableRow>
-                <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
+                <TableCell colSpan={9} className="py-10 text-center text-muted-foreground">
                   Loading…
                 </TableCell>
               </TableRow>
             )}
             {bills?.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
+                <TableCell colSpan={9} className="py-10 text-center text-muted-foreground">
                   No bills recorded yet.
                 </TableCell>
               </TableRow>
             )}
-            {bills?.map((bill) => (
-              <TableRow key={bill.id}>
-                <TableCell className="font-mono font-semibold text-foreground">{bill.bill_no}</TableCell>
-                <TableCell className="font-semibold text-foreground">
-                  {(bill as any).vendor?.name || "Unknown"}
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {new Date(bill.bill_date).toLocaleDateString()}
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {new Date(bill.due_date).toLocaleDateString()}
-                </TableCell>
-                <TableCell className="font-semibold">
-                  {(bill.total ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                </TableCell>
-                <TableCell>
-                  <Badge className={STATUS_COLORS[bill.status]}>
-                    {bill.status.replace("_", " ")}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  <button
-                    title="View"
-                    className="p-1 text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <Eye className="h-4 w-4" />
-                  </button>
-                </TableCell>
-              </TableRow>
-            ))}
+            {bills?.map((bill) => {
+              const total = bill.total ?? 0;
+              const paid = paidByBill[bill.id] || 0;
+              const balance = total - paid;
+              const canPay = bill.journal_entry_id != null && bill.status !== "void" && bill.status !== "paid" && balance > 0;
+              const canVoid = bill.status !== "void";
+              return (
+                <TableRow key={bill.id}>
+                  <TableCell className="font-mono font-semibold text-foreground">{bill.bill_no}</TableCell>
+                  <TableCell className="font-semibold text-foreground">
+                    {(bill as any).vendor?.name || "Unknown"}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {new Date(bill.bill_date).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {new Date(bill.due_date).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell className="font-semibold">
+                    {total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {paid.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </TableCell>
+                  <TableCell className="text-sm font-medium">
+                    {balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={STATUS_COLORS[bill.status]}>
+                      {bill.status.replace("_", " ")}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1">
+                      {canPay && (
+                        <button
+                          title="Record payment"
+                          onClick={() => handleOpenPaymentDialog(bill)}
+                          className="p-1 text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          <Banknote className="h-4 w-4" />
+                        </button>
+                      )}
+                      {canVoid && (
+                        <button
+                          title="Void bill"
+                          onClick={() => handleVoidBill(bill)}
+                          disabled={voidingId === bill.id}
+                          className="p-1 text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
+                        >
+                          <Ban className="h-4 w-4" />
+                        </button>
+                      )}
+                      <button
+                        title="View"
+                        className="p-1 text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>
+
+      <Dialog open={!!paymentBill} onOpenChange={(open) => !open && handleClosePaymentDialog()}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Record Payment</DialogTitle>
+          </DialogHeader>
+          {paymentBill && (
+            <div className="space-y-4">
+              <div className="rounded-lg bg-muted p-3 text-sm">
+                <p className="font-semibold text-foreground">{paymentBill.bill_no}</p>
+                <p className="text-muted-foreground">
+                  Balance due: {((paymentBill.total ?? 0) - (paidByBill[paymentBill.id] || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Payment Date</Label>
+                  <Input
+                    type="date"
+                    value={paymentForm.payment_date}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, payment_date: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label>Method</Label>
+                  <Select
+                    value={paymentForm.method}
+                    onValueChange={(v) => setPaymentForm({ ...paymentForm, method: v as PaymentMethod })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">Cash</SelectItem>
+                      <SelectItem value="mpesa">M-Pesa</SelectItem>
+                      <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                      <SelectItem value="cheque">Cheque</SelectItem>
+                      <SelectItem value="card">Card</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <Label>Paid From (Cash/Bank Account) *</Label>
+                <Select
+                  value={paymentForm.deposit_account_id ? paymentForm.deposit_account_id.toString() : ""}
+                  onValueChange={(v) => setPaymentForm({ ...paymentForm, deposit_account_id: parseInt(v) })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select account" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {cashAccounts.map((a) => (
+                      <SelectItem key={a.id} value={a.id.toString()}>
+                        {a.code} · {a.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Amount *</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={paymentForm.amount}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, amount: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+                <div>
+                  <Label>Reference</Label>
+                  <Input
+                    value={paymentForm.reference}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, reference: e.target.value })}
+                    placeholder="Cheque #, M-Pesa code..."
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={handleClosePaymentDialog} className="flex-1" disabled={recordingPayment}>
+                  Cancel
+                </Button>
+                <Button onClick={handleRecordPayment} className="flex-1" disabled={recordingPayment}>
+                  {recordingPayment ? "Recording…" : "Record Payment"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
+
   );
 }
