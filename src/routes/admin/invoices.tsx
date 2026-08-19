@@ -125,9 +125,24 @@ function AdminInvoices() {
       supabase.from("fiscal_years").select("*").order("start_date", { ascending: false }),
       supabase.from("accounts").select("*").eq("is_active", true).order("code", { ascending: true }),
     ]);
-    if (mErr) console.error("[admin/invoices] members load error", mErr);
-    if (fyErr) console.error("[admin/invoices] fiscal years load error", fyErr);
-    if (accErr) console.error("[admin/invoices] accounts load error", accErr);
+    if (mErr) {
+      console.error("[admin/invoices] members load error", mErr);
+      toast.error(`Couldn't load members: ${mErr.message}`);
+    } else if (!m || m.length === 0) {
+      toast.info("No members found yet. Add members under Admin → Members first.");
+    }
+    if (fyErr) {
+      console.error("[admin/invoices] fiscal years load error", fyErr);
+      toast.error(`Couldn't load fiscal years: ${fyErr.message}`);
+    } else if (!fy || fy.length === 0) {
+      toast.info("No fiscal years found yet. Add one under Admin → Fiscal Years first.");
+    }
+    if (accErr) {
+      console.error("[admin/invoices] accounts load error", accErr);
+      toast.error(`Couldn't load accounts: ${accErr.message}`);
+    } else if (!acc || acc.length === 0) {
+      toast.info("No active accounts found yet.");
+    }
     setMembers(m || []);
     setFiscalYears(fy || []);
     setAccounts(acc || []);
@@ -278,11 +293,17 @@ function AdminInvoices() {
                       <SelectValue placeholder="Select member" />
                     </SelectTrigger>
                     <SelectContent>
-                      {members.map((m) => (
-                        <SelectItem key={m.id} value={m.id.toString()}>
-                          {m.first_name} {m.last_name}
-                        </SelectItem>
-                      ))}
+                      {members.length === 0 ? (
+                        <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                          No members yet — add one under Admin → Members.
+                        </div>
+                      ) : (
+                        members.map((m) => (
+                          <SelectItem key={m.id} value={m.id.toString()}>
+                            {m.first_name} {m.last_name}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -296,11 +317,17 @@ function AdminInvoices() {
                       <SelectValue placeholder="Select fiscal year" />
                     </SelectTrigger>
                     <SelectContent>
-                      {fiscalYears.map((fy) => (
-                        <SelectItem key={fy.id} value={fy.id.toString()}>
-                          {fy.name}
-                        </SelectItem>
-                      ))}
+                      {fiscalYears.length === 0 ? (
+                        <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                          No fiscal years yet — add one under Admin → Fiscal Years.
+                        </div>
+                      ) : (
+                        fiscalYears.map((fy) => (
+                          <SelectItem key={fy.id} value={fy.id.toString()}>
+                            {fy.name}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -376,11 +403,17 @@ function AdminInvoices() {
                             <SelectValue placeholder="Account" />
                           </SelectTrigger>
                           <SelectContent>
-                            {accounts.map((a) => (
-                              <SelectItem key={a.id} value={a.id.toString()}>
-                                {a.code} · {a.name}
-                              </SelectItem>
-                            ))}
+                            {accounts.length === 0 ? (
+                              <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                                No accounts found.
+                              </div>
+                            ) : (
+                              accounts.map((a) => (
+                                <SelectItem key={a.id} value={a.id.toString()}>
+                                  {a.code} · {a.name}
+                                </SelectItem>
+                              ))
+                            )}
                           </SelectContent>
                         </Select>
                       </div>
