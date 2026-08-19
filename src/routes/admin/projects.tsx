@@ -1,10 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { Plus, Edit2, Eye, Trash2, Zap } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Plus, Edit2, Trash2, Zap, ImagePlus, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import {
+  addProjectPhoto,
+  deleteProjectPhoto,
+  fetchProjectPhotos,
+  uploadClubPhoto,
+  type ProjectPhoto,
+} from "@/lib/content-photos";
 import type { Database } from "@/integrations/supabase/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -63,6 +70,17 @@ function AdminProjects() {
     cover_image_url: "",
     published: false,
   });
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+
+  // Photo gallery for the project currently being edited (only available
+  // once the project has an id — i.e. not while creating a brand new one).
+  const [galleryPhotos, setGalleryPhotos] = useState<ProjectPhoto[]>([]);
+  const [uploadingGalleryPhoto, setUploadingGalleryPhoto] = useState(false);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+
   const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -82,6 +100,15 @@ function AdminProjects() {
     setProjects(data);
   }
 
+  async function loadGalleryPhotos(projectId: number) {
+    try {
+      setGalleryPhotos(await fetchProjectPhotos(projectId));
+    } catch (err) {
+      console.error("[admin/projects] failed to load photos", err);
+      toast.error("Couldn't load project photos.");
+    }
+  }
+
   function handleOpenDialog(project?: Project) {
     if (project) {
       setEditingProject(project);
@@ -99,6 +126,7 @@ function AdminProjects() {
         cover_image_url: project.cover_image_url || "",
         published: project.published,
       });
+      loadGalleryPhotos(project.id);
     } else {
       setEditingProject(null);
       setFormData({
@@ -115,13 +143,43 @@ function AdminProjects() {
         cover_image_url: "",
         published: false,
       });
+      setGalleryPhotos([]);
     }
+    setCoverFile(null);
+    setCoverPreview(null);
     setOpenDialog(true);
   }
 
   function handleCloseDialog() {
     setOpenDialog(false);
     setEditingProject(null);
+    setCoverFile(null);
+    setCoverPreview(null);
+    setGalleryPhotos([]);
+  }
+
+  function handleCoverSelected(file: File | null) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please choose an image file.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be under 5MB.");
+      return;
+    }
+    setCoverFile(file);
+    setCoverPreview(URL.createObjectURL(file));
+  }
+
+  async function uploadCoverIfNeeded(projectId: number): Promise<string | null> {
+    if (!coverFile) return formData.cover_image_url || null;
+    setUploadingCover(true);
+    try {
+      return await uploadClubPhoto(`projects/${projectId}`, coverFile);
+    } finally {
+      setUploadingCover(false);
+    }
   }
 
   async function handleSaveProject() {
@@ -133,6 +191,7 @@ function AdminProjects() {
     setBusyId("save");
     try {
       if (editingProject) {
+        const coverUrl = await uploadCoverIfNeeded(editingProject.id);
         const { error } = await supabase
           .from("projects")
           .update({
@@ -146,29 +205,44 @@ function AdminProjects() {
             end_date: formData.end_date || null,
             budget_amount: formData.budget_amount ? parseFloat(formData.budget_amount) : null,
             fund_id: formData.fund_id,
-            cover_image_url: formData.cover_image_url || null,
+            cover_image_url: coverUrl,
             published: formData.published,
           })
           .eq("id", editingProject.id);
         if (error) throw error;
         toast.success("Project updated.");
       } else {
-        const { error } = await supabase.from("projects").insert({
-          title: formData.title,
-          slug: formData.slug,
-          area_of_focus: formData.area_of_focus,
-          summary: formData.summary || null,
-          story: formData.story || null,
-          status: formData.status,
-          start_date: formData.start_date || null,
-          end_date: formData.end_date || null,
-          budget_amount: formData.budget_amount ? parseFloat(formData.budget_amount) : null,
-          fund_id: formData.fund_id,
-          cover_image_url: formData.cover_image_url || null,
-          published: formData.published,
-        });
+        const { data: inserted, error } = await supabase
+          .from("projects")
+          .insert({
+            title: formData.title,
+            slug: formData.slug,
+            area_of_focus: formData.area_of_focus,
+            summary: formData.summary || null,
+            story: formData.story || null,
+            status: formData.status,
+            start_date: formData.start_date || null,
+            end_date: formData.end_date || null,
+            budget_amount: formData.budget_amount ? parseFloat(formData.budget_amount) : null,
+            fund_id: formData.fund_id,
+            cover_image_url: null,
+            published: formData.published,
+          })
+          .select()
+          .single();
         if (error) throw error;
-        toast.success("Project created.");
+
+        if (coverFile && inserted) {
+          const coverUrl = await uploadCoverIfNeeded(inserted.id);
+          if (coverUrl) {
+            const { error: coverErr } = await supabase
+              .from("projects")
+              .update({ cover_image_url: coverUrl })
+              .eq("id", inserted.id);
+            if (coverErr) console.error("[admin/projects] cover attach error", coverErr);
+          }
+        }
+        toast.success("Project created. Reopen it to add gallery photos.");
       }
       handleCloseDialog();
       load();
@@ -177,6 +251,34 @@ function AdminProjects() {
       toast.error(err instanceof Error ? err.message : "Failed to save project.");
     } finally {
       setBusyId(null);
+    }
+  }
+
+  async function handleAddGalleryPhoto(file: File | null) {
+    if (!file || !editingProject) return;
+    setUploadingGalleryPhoto(true);
+    try {
+      const photo = await addProjectPhoto(editingProject.id, file);
+      setGalleryPhotos((prev) => [...prev, photo]);
+      toast.success("Photo added.");
+    } catch (err) {
+      console.error("[admin/projects] add photo error", err);
+      toast.error(err instanceof Error ? err.message : "Failed to upload photo.");
+    } finally {
+      setUploadingGalleryPhoto(false);
+      if (galleryInputRef.current) galleryInputRef.current.value = "";
+    }
+  }
+
+  async function handleDeleteGalleryPhoto(photo: ProjectPhoto) {
+    if (!confirm("Remove this photo from the project gallery?")) return;
+    try {
+      await deleteProjectPhoto(photo);
+      setGalleryPhotos((prev) => prev.filter((p) => p.id !== photo.id));
+      toast.success("Photo removed.");
+    } catch (err) {
+      console.error("[admin/projects] delete photo error", err);
+      toast.error("Failed to remove photo.");
     }
   }
 
@@ -202,10 +304,7 @@ function AdminProjects() {
     if (!confirm("Delete this project? This cannot be undone.")) return;
     setBusyId(project.id.toString());
     try {
-      const { error } = await supabase
-        .from("projects")
-        .delete()
-        .eq("id", project.id);
+      const { error } = await supabase.from("projects").delete().eq("id", project.id);
       if (error) throw error;
       toast.success("Project deleted.");
       load();
@@ -221,12 +320,16 @@ function AdminProjects() {
     return <div className="text-muted-foreground">You don't have access to projects.</div>;
   }
 
+  const displayCover = coverPreview ?? formData.cover_image_url;
+
   return (
     <div>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Projects</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Create and manage community impact projects.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Create and manage community impact projects.
+          </p>
         </div>
         <Dialog open={openDialog} onOpenChange={setOpenDialog}>
           <DialogTrigger asChild>
@@ -235,7 +338,7 @@ function AdminProjects() {
               New Project
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-h-96 overflow-y-auto">
+          <DialogContent className="max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingProject ? "Edit Project" : "Create New Project"}</DialogTitle>
             </DialogHeader>
@@ -272,7 +375,9 @@ function AdminProjects() {
                 <Textarea
                   id="summary"
                   value={formData.summary}
-                  onChange={(e) => setFormData({ ...formData, summary: e.target.value.slice(0, 280) })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, summary: e.target.value.slice(0, 280) })
+                  }
                   placeholder="Brief description of the project..."
                   rows={2}
                 />
@@ -290,13 +395,18 @@ function AdminProjects() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="status">Status *</Label>
-                  <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v as ProjectStatus })}>
+                  <Select
+                    value={formData.status}
+                    onValueChange={(v) => setFormData({ ...formData, status: v as ProjectStatus })}
+                  >
                     <SelectTrigger id="status">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {PROJECT_STATUSES.map((s) => (
-                        <SelectItem key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</SelectItem>
+                        <SelectItem key={s} value={s}>
+                          {s.charAt(0).toUpperCase() + s.slice(1)}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -313,17 +423,124 @@ function AdminProjects() {
                   />
                 </div>
               </div>
+
+              {/* Cover image */}
+              <div>
+                <Label>Cover Image</Label>
+                <div className="mt-1.5 flex items-center gap-3">
+                  {displayCover ? (
+                    <img
+                      src={displayCover}
+                      alt="Cover preview"
+                      className="h-16 w-24 rounded-md border border-border object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-16 w-24 items-center justify-center rounded-md border border-dashed border-border text-muted-foreground">
+                      <ImagePlus className="h-5 w-5" />
+                    </div>
+                  )}
+                  <input
+                    ref={coverInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handleCoverSelected(e.target.files?.[0] ?? null)}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => coverInputRef.current?.click()}
+                  >
+                    {uploadingCover ? (
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <ImagePlus className="mr-1.5 h-3.5 w-3.5" />
+                    )}
+                    {displayCover ? "Change" : "Upload"}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Photo gallery — only once the project has an id */}
+              {editingProject && (
+                <div>
+                  <Label>Project Photo Gallery</Label>
+                  <div className="mt-1.5 grid grid-cols-4 gap-2">
+                    {galleryPhotos.map((p) => (
+                      <div
+                        key={p.id}
+                        className="group relative aspect-square overflow-hidden rounded-md border border-border"
+                      >
+                        <img
+                          src={p.image_url}
+                          alt={p.caption || ""}
+                          className="h-full w-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteGalleryPhoto(p)}
+                          className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                          title="Remove photo"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => galleryInputRef.current?.click()}
+                      disabled={uploadingGalleryPhoto}
+                      className="flex aspect-square items-center justify-center rounded-md border border-dashed border-border text-muted-foreground transition-colors hover:border-primary hover:text-primary disabled:opacity-50"
+                    >
+                      {uploadingGalleryPhoto ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <Plus className="h-5 w-5" />
+                      )}
+                    </button>
+                    <input
+                      ref={galleryInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handleAddGalleryPhoto(e.target.files?.[0] ?? null)}
+                    />
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    These appear in the project's photo gallery on the public Projects page.
+                  </p>
+                </div>
+              )}
+              {!editingProject && (
+                <p className="text-xs text-muted-foreground">
+                  Save the project first, then reopen it to add gallery photos.
+                </p>
+              )}
+
               <div className="flex items-center gap-2">
                 <Checkbox
                   id="published"
                   checked={formData.published}
-                  onCheckedChange={(checked) => setFormData({ ...formData, published: checked === true })}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, published: checked === true })
+                  }
                 />
-                <Label htmlFor="published" className="cursor-pointer">Published (visible to public)</Label>
+                <Label htmlFor="published" className="cursor-pointer">
+                  Published (visible to public)
+                </Label>
               </div>
               <div className="flex gap-2">
-                <Button onClick={handleSaveProject} disabled={busyId === "save"} className="flex-1">
-                  {editingProject ? "Update" : "Create"} Project
+                <Button
+                  onClick={handleSaveProject}
+                  disabled={busyId === "save" || uploadingCover}
+                  className="flex-1"
+                >
+                  {uploadingCover
+                    ? "Uploading…"
+                    : busyId === "save"
+                      ? "Saving…"
+                      : `${editingProject ? "Update" : "Create"} Project`}
                 </Button>
                 <Button variant="outline" onClick={handleCloseDialog} className="flex-1">
                   Cancel
@@ -363,7 +580,18 @@ function AdminProjects() {
             )}
             {projects?.map((p) => (
               <TableRow key={p.id}>
-                <TableCell className="font-semibold text-foreground">{p.title}</TableCell>
+                <TableCell className="font-semibold text-foreground">
+                  <div className="flex items-center gap-2">
+                    {p.cover_image_url && (
+                      <img
+                        src={p.cover_image_url}
+                        alt=""
+                        className="h-8 w-12 rounded object-cover"
+                      />
+                    )}
+                    {p.title}
+                  </div>
+                </TableCell>
                 <TableCell className="text-sm text-muted-foreground">{p.area_of_focus}</TableCell>
                 <TableCell>
                   <Badge variant={p.status === "completed" ? "default" : "secondary"}>
@@ -371,7 +599,9 @@ function AdminProjects() {
                   </Badge>
                 </TableCell>
                 <TableCell className="text-sm font-mono">
-                  {p.budget_amount ? `KES ${parseFloat(p.budget_amount.toString()).toFixed(2)}` : "—"}
+                  {p.budget_amount
+                    ? `KES ${parseFloat(p.budget_amount.toString()).toFixed(2)}`
+                    : "—"}
                 </TableCell>
                 <TableCell>
                   <Badge variant={p.published ? "default" : "outline"}>
