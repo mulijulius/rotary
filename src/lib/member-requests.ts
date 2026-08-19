@@ -69,3 +69,25 @@ export async function fetchRoleAudit(limit = 200) {
   if (error) throw error;
   return data;
 }
+
+// Admin-only: link a member profile to the auth account that will log in
+// as them. Also clears any pending role request that account was waiting
+// on — see 20260819_006_member_account_linking.sql. This is what makes
+// "Your account isn't linked to a member profile yet" on the member
+// portal (e.g. Admin -> Shop) go away for that person.
+export async function linkMemberAccount(memberId: number, userId: string) {
+  const { error } = await supabase.rpc("fn_link_member_account", {
+    _member_id: memberId,
+    _user_id: userId,
+  });
+  if (error) throw error;
+}
+
+// Admin-only: remove the link between a member profile and an auth
+// account (e.g. it was linked to the wrong person).
+export async function unlinkMemberAccount(memberId: number) {
+  const { error } = await supabase.rpc("fn_unlink_member_account", {
+    _member_id: memberId,
+  });
+  if (error) throw error;
+}
