@@ -1759,26 +1759,92 @@ export type Database = {
           },
         ]
       }
+      gl_settings: {
+        Row: {
+          ap_account_id: number | null
+          ar_account_id: number | null
+          cash_account_id: number | null
+          default_fund_id: number | null
+          id: number
+          updated_at: string
+        }
+        Insert: {
+          ap_account_id?: number | null
+          ar_account_id?: number | null
+          cash_account_id?: number | null
+          default_fund_id?: number | null
+          id?: number
+          updated_at?: string
+        }
+        Update: {
+          ap_account_id?: number | null
+          ar_account_id?: number | null
+          cash_account_id?: number | null
+          default_fund_id?: number | null
+          id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gl_settings_ap_account_id_fkey"
+            columns: ["ap_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gl_settings_ar_account_id_fkey"
+            columns: ["ar_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gl_settings_cash_account_id_fkey"
+            columns: ["cash_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gl_settings_default_fund_id_fkey"
+            columns: ["default_fund_id"]
+            isOneToOne: false
+            referencedRelation: "funds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_allocations: {
         Row: {
           amount_applied: number
+          bill_id: number | null
           id: number
-          invoice_id: number
+          invoice_id: number | null
           payment_id: number
         }
         Insert: {
           amount_applied: number
+          bill_id?: number | null
           id?: number
-          invoice_id: number
+          invoice_id?: number | null
           payment_id: number
         }
         Update: {
           amount_applied?: number
+          bill_id?: number | null
           id?: number
-          invoice_id?: number
+          invoice_id?: number | null
           payment_id?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "payment_allocations_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "bills"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payment_allocations_invoice_id_fkey"
             columns: ["invoice_id"]
@@ -1807,7 +1873,10 @@ export type Database = {
           payer_name: string | null
           payment_date: string
           payment_no: string
+          payment_type: Database["public"]["Enums"]["payment_direction"]
           reference: string | null
+          vendor_id: number | null
+          voided: boolean
         }
         Insert: {
           amount: number
@@ -1820,7 +1889,10 @@ export type Database = {
           payer_name?: string | null
           payment_date?: string
           payment_no: string
+          payment_type?: Database["public"]["Enums"]["payment_direction"]
           reference?: string | null
+          vendor_id?: number | null
+          voided?: boolean
         }
         Update: {
           amount?: number
@@ -1833,7 +1905,10 @@ export type Database = {
           payer_name?: string | null
           payment_date?: string
           payment_no?: string
+          payment_type?: Database["public"]["Enums"]["payment_direction"]
           reference?: string | null
+          vendor_id?: number | null
+          voided?: boolean
         }
         Relationships: [
           {
@@ -1877,6 +1952,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_member_balances"
             referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "payments_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -2392,6 +2474,14 @@ export type Database = {
         }
         Relationships: []
       }
+      v_vendor_balances: {
+        Row: {
+          balance_owed: number | null
+          vendor_id: number | null
+          vendor_name: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       fn_calculate_depreciation: { Args: never; Returns: undefined }
@@ -2458,6 +2548,7 @@ export type Database = {
         | "alumni"
         | "terminated"
       normal_side: "debit" | "credit"
+      payment_direction: "receipt" | "disbursement"
       payment_method: "cash" | "mpesa" | "bank_transfer" | "cheque" | "card"
       project_status: "planned" | "ongoing" | "completed"
       request_status: "pending" | "approved" | "denied"
@@ -2640,6 +2731,7 @@ export const Constants = {
         "terminated",
       ],
       normal_side: ["debit", "credit"],
+      payment_direction: ["receipt", "disbursement"],
       payment_method: ["cash", "mpesa", "bank_transfer", "cheque", "card"],
       project_status: ["planned", "ongoing", "completed"],
       request_status: ["pending", "approved", "denied"],
