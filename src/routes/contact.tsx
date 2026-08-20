@@ -83,7 +83,7 @@ function ContactPage() {
             <ul className="space-y-5">
               {details.map((d) => (
                 <li key={d.label} className="flex gap-4">
-                  <span className="flex size-10 flex-none items-center justify-center rounded-xl bg-card text-lg shadow-[var(--shadow-card)]">
+                  <span className="flex size-12 flex-none items-center justify-center rounded-xl bg-card text-xl shadow-[var(--shadow-card)]">
                     <span aria-hidden>{d.icon}</span>
                   </span>
                   <span>
@@ -99,6 +99,7 @@ function ContactPage() {
                 { label: "f", name: "Facebook", href: SOCIAL_LINKS.facebook },
                 { label: "X", name: "X (Twitter)", href: SOCIAL_LINKS.x },
                 { label: "ig", name: "Instagram", href: SOCIAL_LINKS.instagram },
+                { label: "in", name: "LinkedIn", href: "https://linkedin.com/company/rotary-club-of-athi-river" },
               ].map((s) => (
                 <a
                   key={s.name}
@@ -106,7 +107,7 @@ function ContactPage() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={s.name}
-                  className="flex size-9 items-center justify-center rounded-full bg-card text-sm font-bold text-navy shadow-[var(--shadow-card)] transition-colors hover:bg-primary hover:text-primary-foreground"
+                  className="flex size-11 items-center justify-center rounded-full bg-card text-base font-bold text-navy shadow-[var(--shadow-card)] transition-colors hover:bg-primary hover:text-primary-foreground"
                 >
                   {s.label}
                 </a>
