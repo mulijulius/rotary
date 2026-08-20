@@ -121,9 +121,9 @@ function ContactPage() {
           >
             <h3 className="mb-5 text-xl">Send us a message</h3>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Full Name" name="name" placeholder="fname lname" required />
-              <Field label="Email" name="email" type="email" placeholder="adrress@email.com" required />
-              <Field label="Phone" name="phone" placeholder="+254 712345679/0712345679" />
+              <Field label="Full Name" name="name" placeholder="Jane Doe" required />
+              <Field label="Email" name="email" type="email" placeholder="jane@email.com" required />
+              <Field label="Phone" name="phone" placeholder="+254 7xx xxx xxx" />
               <Field label="Subject" name="subject" placeholder="Membership enquiry" />
             </div>
             <label className="mt-4 block">
