@@ -57,12 +57,12 @@ function AdminProductOrders() {
   async function load() {
     const { data, error } = await supabase
       .from("product_orders")
-      // product_orders has two FKs into members (member_id and decided_by),
-      // so the embed must specify which one via the !column hint - otherwise
-      // PostgREST can't tell which relationship to use and errors out with
-      // "more than one relationship found", which is what was breaking this
-      // page load.
-      .select(`*,member:members!product_orders_member_id_fkey(first_name,last_name),inventory_item:inventory_items(name)`)
+      // product_orders has two FKs into members (member_id and decided_by).
+      // Using the constraint-name hint (!fkey_name) requires guessing the
+      // exact name Postgres/Supabase assigned it, which can vary. The
+      // column-name hint (!member_id) is more robust - PostgREST resolves
+      // it directly against the column, no naming assumption needed.
+      .select(`*,member:members!member_id(first_name,last_name),inventory_item:inventory_items(name)`)
       .order("created_at", { ascending: false });
     if (error) {
       console.error("[admin/product-orders] failed to load", error);
