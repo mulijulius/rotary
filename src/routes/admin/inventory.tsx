@@ -51,6 +51,19 @@ const statusVariant: Record<InventoryStatus, "default" | "secondary" | "outline"
   disposed: "outline",
 };
 
+// Stock below this many units (but still > 0) is flagged as "Low Stock".
+const LOW_STOCK_THRESHOLD = 3;
+
+function stockBadge(quantity: number): { label: string; className: string } | null {
+  if (quantity <= 0) {
+    return { label: "Out of Stock", className: "bg-red-100 text-red-800" };
+  }
+  if (quantity <= LOW_STOCK_THRESHOLD) {
+    return { label: "Low Stock", className: "bg-amber-100 text-amber-800" };
+  }
+  return null;
+}
+
 const categoryColors: Record<InventoryCategory, string> = {
   equipment: "bg-blue-100 text-blue-800",
   furniture: "bg-amber-100 text-amber-800",
@@ -773,7 +786,19 @@ function AdminInventory() {
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{item.serial_number || "—"}</TableCell>
                   <TableCell className="text-right font-mono">
-                    {item.quantity} {item.unit_of_measure}
+                    <div className="flex items-center justify-end gap-2">
+                      <span>
+                        {item.quantity} {item.unit_of_measure}
+                      </span>
+                      {(() => {
+                        const badge = stockBadge(item.quantity);
+                        return badge ? (
+                          <span className={`rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap ${badge.className}`}>
+                            {badge.label}
+                          </span>
+                        ) : null;
+                      })()}
+                    </div>
                   </TableCell>
                   <TableCell className="text-right font-mono">
                     {parseFloat(item.unit_cost.toString()).toFixed(2)}
