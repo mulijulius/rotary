@@ -72,6 +72,7 @@ function AdminAccounts() {
     ap_account_id: null as number | null,
     cash_account_id: null as number | null,
     default_fund_id: null as number | null,
+    product_sales_account_id: null as number | null,
   });
   const [savingGl, setSavingGl] = useState(false);
 
@@ -108,6 +109,7 @@ function AdminAccounts() {
         ap_account_id: settings.ap_account_id,
         cash_account_id: settings.cash_account_id,
         default_fund_id: settings.default_fund_id,
+        product_sales_account_id: settings.product_sales_account_id,
       });
     }
   }
@@ -122,6 +124,7 @@ function AdminAccounts() {
           ap_account_id: glDraft.ap_account_id,
           cash_account_id: glDraft.cash_account_id,
           default_fund_id: glDraft.default_fund_id,
+          product_sales_account_id: glDraft.product_sales_account_id,
           updated_at: new Date().toISOString(),
         })
         .eq("id", 1);
@@ -356,7 +359,7 @@ function AdminAccounts() {
           debits its expense/asset accounts and credits Accounts Payable, issuing an invoice debits Accounts
           Receivable and credits income, and payments move cash and settle the balance.
         </p>
-        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-4">
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-5">
           <div>
             <Label>Accounts Receivable *</Label>
             <Select
@@ -429,6 +432,24 @@ function AdminAccounts() {
               </SelectContent>
             </Select>
           </div>
+          <div>
+            <Label>Product Sales Revenue</Label>
+            <Select
+              value={glDraft.product_sales_account_id ? glDraft.product_sales_account_id.toString() : ""}
+              onValueChange={(v) => setGlDraft({ ...glDraft, product_sales_account_id: parseInt(v) })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select account" />
+              </SelectTrigger>
+              <SelectContent>
+                {(accounts || []).filter((a) => a.is_active).map((a) => (
+                  <SelectItem key={a.id} value={a.id.toString()}>
+                    {a.code} · {a.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         <div className="mt-4 flex items-center gap-3">
           <Button onClick={handleSaveGlSettings} disabled={savingGl} size="sm">
@@ -440,6 +461,13 @@ function AdminAccounts() {
               payments can post to the ledger.
             </span>
           )}
+          {glSettings?.ar_account_id && glSettings?.ap_account_id && glSettings?.default_fund_id &&
+            !glSettings?.product_sales_account_id && (
+              <span className="text-xs text-destructive">
+                Set a Product Sales Revenue account before you can invoice product orders from the Product
+                Orders page.
+              </span>
+            )}
         </div>
       </div>
 
