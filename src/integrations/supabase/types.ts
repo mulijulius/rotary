@@ -577,6 +577,7 @@ export type Database = {
           created_at: string
           created_by: number | null
           id: number
+          recipient_emails: string[] | null
           recipient_type: Database["public"]["Enums"]["email_recipient_type"]
           scheduled_at: string | null
           sent_at: string | null
@@ -590,6 +591,7 @@ export type Database = {
           created_at?: string
           created_by?: number | null
           id?: number
+          recipient_emails?: string[] | null
           recipient_type: Database["public"]["Enums"]["email_recipient_type"]
           scheduled_at?: string | null
           sent_at?: string | null
@@ -603,6 +605,7 @@ export type Database = {
           created_at?: string
           created_by?: number | null
           id?: number
+          recipient_emails?: string[] | null
           recipient_type?: Database["public"]["Enums"]["email_recipient_type"]
           scheduled_at?: string | null
           sent_at?: string | null
