@@ -240,40 +240,25 @@ function AdminBills() {
         vendorId = vendor.id;
       }
 
-      const billNo = makeDocNo("BILL");
-      const { data: bill, error: billError } = await supabase
-        .from("bills")
-        .insert({
-          bill_no: billNo,
-          vendor_id: vendorId,
-          fiscal_year_id: formData.fiscal_year_id,
-          bill_date: formData.bill_date,
-          due_date: formData.due_date,
-          memo: formData.memo || null,
-          status: formData.status,
-        })
-        .select()
-        .single();
-      if (billError) throw billError;
-
-      const { error: linesError } = await supabase.from("bill_lines").insert(
-        validLines.map((l) => ({
-          bill_id: bill.id,
+      // Bill header + line items are created atomically in a single DB
+      // transaction via this RPC. If anything fails - including GL Settings
+      // not being configured, which the posting trigger enforces - the
+      // whole thing rolls back automatically, so there's no partial/ghost
+      // bill left behind and no separate delete step required.
+      const { error: rpcError } = await supabase.rpc("create_bill_with_lines", {
+        p_vendor_id: vendorId,
+        p_fiscal_year_id: formData.fiscal_year_id,
+        p_bill_date: formData.bill_date,
+        p_due_date: formData.due_date,
+        p_memo: formData.memo || null,
+        p_status: formData.status,
+        p_lines: validLines.map((l) => ({
           description: l.description,
           account_id: l.account_id,
           amount: l.amount,
-        }))
-      );
-      if (linesError) {
-        // Line items failed (often because GL Settings isn't fully
-        // configured, so the auto-posting trigger rejected them) - the bill
-        // header above already committed as its own insert, so clean it up
-        // rather than leaving a lineless "ghost" bill behind. This delete is
-        // always allowed here since a bill with no journal entry yet is
-        // never locked.
-        await supabase.from("bills").delete().eq("id", bill.id);
-        throw linesError;
-      }
+        })),
+      });
+      if (rpcError) throw rpcError;
 
       toast.success("Bill recorded successfully.");
       setOpenDialog(false);
