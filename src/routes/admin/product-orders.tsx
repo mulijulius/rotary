@@ -36,6 +36,18 @@ type OrderRow = ProductOrder & {
   invoice?: { invoice_no: string; status: string } | null;
 };
 
+function errorMessage(err: unknown, fallback: string): string {
+  // Supabase client errors (PostgrestError from .rpc()/.from() calls) are
+  // plain objects with a `message` string, not real Error instances - so
+  // `err instanceof Error` misses them and silently swallows the actual
+  // reason. Duck-type on `.message` instead so RAISE EXCEPTION text from
+  // the database (the useful part) actually reaches the user.
+  if (err && typeof err === "object" && "message" in err && typeof (err as any).message === "string" && (err as any).message) {
+    return (err as any).message;
+  }
+  return fallback;
+}
+
 function AdminProductOrders() {
   const { role } = useAuth();
   const [orders, setOrders] = useState<OrderRow[] | null>(null);
@@ -93,7 +105,7 @@ function AdminProductOrders() {
       load();
     } catch (err) {
       console.error("[admin/product-orders] update error", err);
-      toast.error("Failed to update order.");
+      toast.error(errorMessage(err, "Failed to update order."));
     } finally {
       setBusyId(null);
     }
@@ -115,7 +127,7 @@ function AdminProductOrders() {
       load();
     } catch (err) {
       console.error("[admin/product-orders] invoice error", err);
-      toast.error(err instanceof Error ? err.message : "Failed to create invoice.");
+      toast.error(errorMessage(err, "Failed to create invoice."));
     } finally {
       setInvoicingId(null);
     }
