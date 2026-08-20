@@ -32,6 +32,30 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
   cancelled: "bg-red-100 text-red-800",
 };
 
+// Stock below this many units (but still > 0) is flagged as "Low Stock".
+const LOW_STOCK_THRESHOLD = 3;
+
+function stockBadge(quantity: number): { label: string; className: string } | null {
+  if (quantity <= 0) {
+    return { label: "Out of Stock", className: "bg-red-100 text-red-800" };
+  }
+  if (quantity <= LOW_STOCK_THRESHOLD) {
+    return { label: "Low Stock", className: "bg-amber-100 text-amber-800" };
+  }
+  return null;
+}
+
+function errorMessage(err: unknown, fallback: string): string {
+  // Supabase/Postgres errors (including RAISE EXCEPTION text from the
+  // stock-deduction trigger) are plain objects with a `message` string,
+  // not real Error instances, so surface that text when present instead of
+  // always falling back to a generic message.
+  if (err && typeof err === "object" && "message" in err && typeof (err as any).message === "string" && (err as any).message) {
+    return (err as any).message;
+  }
+  return fallback;
+}
+
 function makeOrderNo() {
   const now = new Date();
   const y = now.getFullYear();
@@ -83,11 +107,12 @@ function MemberShop() {
   }
 
   async function loadProducts() {
+    // Include out-of-stock items too (rather than hiding them) so members
+    // can see "Out of Stock" instead of the product silently disappearing.
     const { data, error } = await supabase
       .from("inventory_items")
       .select("*")
       .eq("is_for_sale", true)
-      .gt("quantity", 0)
       .order("name", { ascending: true });
     if (error) {
       console.error("[admin/shop] failed to load products", error);
@@ -111,6 +136,10 @@ function MemberShop() {
   }
 
   function openBuyDialog(item: InventoryItem) {
+    if (item.quantity <= 0) {
+      toast.error("This item is out of stock.");
+      return;
+    }
     setBuyItem(item);
     setQuantity(1);
     setNotes("");
@@ -133,6 +162,9 @@ function MemberShop() {
 
     setSaving(true);
     try {
+      // Stock is deducted immediately (by a database trigger) the moment
+      // this insert succeeds — it also rejects the order outright if
+      // another member beat us to the last units in the meantime.
       const { error } = await supabase.from("product_orders").insert({
         order_no: makeOrderNo(),
         member_id: memberId,
@@ -143,12 +175,13 @@ function MemberShop() {
         status: "pending",
       });
       if (error) throw error;
-      toast.success("Order placed. The treasurer will confirm it shortly.");
+      toast.success("Order placed. Stock has been updated and the treasurer will confirm it shortly.");
       setBuyItem(null);
       loadMyOrders(memberId);
+      loadProducts(); // refresh remaining stock / out-of-stock state
     } catch (err) {
       console.error("[admin/shop] order error", err);
-      toast.error("Failed to place order.");
+      toast.error(errorMessage(err, "Failed to place order."));
     } finally {
       setSaving(false);
     }
@@ -178,17 +211,25 @@ function MemberShop() {
         {products?.length === 0 && (
           <p className="text-muted-foreground">No products are listed for sale right now.</p>
         )}
-        {products?.map((item) => (
+        {products?.map((item) => {
+          const badge = stockBadge(item.quantity);
+          const outOfStock = item.quantity <= 0;
+          return (
           <Card key={item.id} className="overflow-hidden p-0">
-            <div className="flex h-36 w-full items-center justify-center bg-muted">
+            <div className="relative flex h-36 w-full items-center justify-center bg-muted">
               {(item as any).photo_url ? (
                 <img
                   src={(item as any).photo_url}
                   alt={item.name}
-                  className="h-full w-full object-cover"
+                  className={`h-full w-full object-cover ${outOfStock ? "opacity-50 grayscale" : ""}`}
                 />
               ) : (
                 <Package className="h-8 w-8 text-muted-foreground" />
+              )}
+              {badge && (
+                <span className={`absolute right-2 top-2 rounded-full px-2 py-0.5 text-xs font-semibold ${badge.className}`}>
+                  {badge.label}
+                </span>
               )}
             </div>
             <div className="p-4">
@@ -206,20 +247,23 @@ function MemberShop() {
                   ? Number(item.sale_price).toLocaleString(undefined, { minimumFractionDigits: 2 })
                   : "Price TBC"}
               </span>
-              <span className="text-xs text-muted-foreground">{item.quantity} in stock</span>
+              <span className={`text-xs ${outOfStock ? "font-semibold text-red-600" : badge ? "font-semibold text-amber-600" : "text-muted-foreground"}`}>
+                {outOfStock ? "Out of stock" : `${item.quantity} in stock`}
+              </span>
             </div>
             <Button
               size="sm"
               className="mt-3 w-full gap-2"
               onClick={() => openBuyDialog(item)}
-              disabled={!item.sale_price}
+              disabled={!item.sale_price || outOfStock}
             >
               <ShoppingCart className="h-4 w-4" />
-              Buy
+              {outOfStock ? "Out of Stock" : "Buy"}
             </Button>
             </div>
           </Card>
-        ))}
+          );
+        })}
       </div>
 
       <Dialog open={!!buyItem} onOpenChange={(open) => !open && setBuyItem(null)}>
