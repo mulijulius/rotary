@@ -62,15 +62,23 @@ interface LineDraft {
 const emptyLine = (): LineDraft => ({ description: "", account_id: 0, amount: 0 });
 
 function makeDocNo(prefix: string) {
-  // Client-side fallback number generator: prefix + date + short random suffix.
-  // Uniqueness is enforced by the bill_no UNIQUE constraint in the DB;
-  // if a collision ever occurs the insert will fail and the user can just retry.
+  // Client-side fallback number generator. bill_no/invoice_no/payment_no
+  // are all varchar(20) in the DB, so this format is sized to always fit:
+  // "BILL-YYMMDDHHMMSS-RR" = 5 + 12 + 1 + 2 = 20 chars exactly (shorter
+  // prefixes like "INV-"/"PMT-" leave a little more room). Uniqueness is
+  // still enforced by the UNIQUE constraint in the DB; a second-level
+  // timestamp plus a random tie-breaker makes same-day collisions
+  // effectively impossible even across several bills created in quick
+  // succession while testing.
   const now = new Date();
-  const y = now.getFullYear();
-  const m = (now.getMonth() + 1).toString().padStart(2, "0");
+  const yy = now.getFullYear().toString().slice(-2);
+  const mo = (now.getMonth() + 1).toString().padStart(2, "0");
   const d = now.getDate().toString().padStart(2, "0");
-  const rand = Math.floor(Math.random() * 900 + 100);
-  return `${prefix}-${y}${m}${d}-${rand}`;
+  const hh = now.getHours().toString().padStart(2, "0");
+  const mi = now.getMinutes().toString().padStart(2, "0");
+  const ss = now.getSeconds().toString().padStart(2, "0");
+  const rand = Math.floor(Math.random() * 90 + 10);
+  return `${prefix}-${yy}${mo}${d}${hh}${mi}${ss}-${rand}`;
 }
 
 function AdminBills() {
@@ -264,7 +272,7 @@ function AdminBills() {
       loadReferenceData();
     } catch (err) {
       console.error("[admin/bills] save error", err);
-      toast.error("Failed to record bill.");
+      toast.error(err instanceof Error ? err.message : "Failed to record bill.");
     } finally {
       setSaving(false);
     }
