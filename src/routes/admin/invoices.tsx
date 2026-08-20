@@ -253,7 +253,16 @@ function AdminInvoices() {
           unit_price: l.unit_price,
         }))
       );
-      if (linesError) throw linesError;
+      if (linesError) {
+        // Line items failed (often because GL Settings isn't fully
+        // configured, so the auto-posting trigger rejected them) - the
+        // invoice header above already committed as its own insert, so
+        // clean it up rather than leaving a lineless "ghost" invoice
+        // behind. This delete is always allowed here since an invoice with
+        // no journal entry yet is never locked.
+        await supabase.from("invoices").delete().eq("id", invoice.id);
+        throw linesError;
+      }
 
       toast.success("Invoice recorded successfully.");
       setOpenDialog(false);
@@ -326,6 +335,22 @@ function AdminInvoices() {
       toast.error(err instanceof Error ? err.message : "Failed to record payment.");
     } finally {
       setRecordingPayment(false);
+    }
+  }
+
+  async function handleDeleteEmptyInvoice(invoice: Invoice) {
+    if (!confirm(`Delete empty invoice ${invoice.invoice_no}? It has no line items recorded, so nothing has posted to the ledger.`)) return;
+    setVoidingId(invoice.id);
+    try {
+      const { error } = await supabase.from("invoices").delete().eq("id", invoice.id);
+      if (error) throw error;
+      toast.success("Empty invoice deleted.");
+      load();
+    } catch (err) {
+      console.error("[admin/invoices] delete empty invoice error", err);
+      toast.error(err instanceof Error ? err.message : "Failed to delete invoice.");
+    } finally {
+      setVoidingId(null);
     }
   }
 
@@ -571,6 +596,7 @@ function AdminInvoices() {
               const canPay =
                 invoice.journal_entry_id != null && invoice.status !== "void" && invoice.status !== "paid" && balance > 0;
               const canVoid = invoice.status !== "void";
+              const isEmptyGhost = total === 0 && invoice.journal_entry_id == null;
               return (
                 <TableRow key={invoice.id}>
                   <TableCell className="font-mono font-semibold text-foreground">{invoice.invoice_no}</TableCell>
@@ -602,6 +628,16 @@ function AdminInvoices() {
                           className="p-1 text-muted-foreground hover:text-foreground transition-colors"
                         >
                           <Banknote className="h-4 w-4" />
+                        </button>
+                      )}
+                      {isEmptyGhost && (
+                        <button
+                          title="Delete empty invoice (no line items were ever recorded)"
+                          onClick={() => handleDeleteEmptyInvoice(invoice)}
+                          disabled={voidingId === invoice.id}
+                          className="p-1 text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       )}
                       {canVoid && (
