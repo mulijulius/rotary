@@ -264,7 +264,16 @@ function AdminBills() {
           amount: l.amount,
         }))
       );
-      if (linesError) throw linesError;
+      if (linesError) {
+        // Line items failed (often because GL Settings isn't fully
+        // configured, so the auto-posting trigger rejected them) - the bill
+        // header above already committed as its own insert, so clean it up
+        // rather than leaving a lineless "ghost" bill behind. This delete is
+        // always allowed here since a bill with no journal entry yet is
+        // never locked.
+        await supabase.from("bills").delete().eq("id", bill.id);
+        throw linesError;
+      }
 
       toast.success("Bill recorded successfully.");
       setOpenDialog(false);
@@ -338,6 +347,22 @@ function AdminBills() {
       toast.error(err instanceof Error ? err.message : "Failed to record payment.");
     } finally {
       setRecordingPayment(false);
+    }
+  }
+
+  async function handleDeleteEmptyBill(bill: Bill) {
+    if (!confirm(`Delete empty bill ${bill.bill_no}? It has no line items recorded, so nothing has posted to the ledger.`)) return;
+    setVoidingId(bill.id);
+    try {
+      const { error } = await supabase.from("bills").delete().eq("id", bill.id);
+      if (error) throw error;
+      toast.success("Empty bill deleted.");
+      load();
+    } catch (err) {
+      console.error("[admin/bills] delete empty bill error", err);
+      toast.error(err instanceof Error ? err.message : "Failed to delete bill.");
+    } finally {
+      setVoidingId(null);
     }
   }
 
@@ -590,6 +615,7 @@ function AdminBills() {
               const balance = total - paid;
               const canPay = bill.journal_entry_id != null && bill.status !== "void" && bill.status !== "paid" && balance > 0;
               const canVoid = bill.status !== "void";
+              const isEmptyGhost = total === 0 && bill.journal_entry_id == null;
               return (
                 <TableRow key={bill.id}>
                   <TableCell className="font-mono font-semibold text-foreground">{bill.bill_no}</TableCell>
@@ -625,6 +651,16 @@ function AdminBills() {
                           className="p-1 text-muted-foreground hover:text-foreground transition-colors"
                         >
                           <Banknote className="h-4 w-4" />
+                        </button>
+                      )}
+                      {isEmptyGhost && (
+                        <button
+                          title="Delete empty bill (no line items were ever recorded)"
+                          onClick={() => handleDeleteEmptyBill(bill)}
+                          disabled={voidingId === bill.id}
+                          className="p-1 text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       )}
                       {canVoid && (
