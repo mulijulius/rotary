@@ -28,6 +28,7 @@ const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
     { to: "/admin/board-positions", label: "Board Positions" },
     // Accounting Module
     { to: "/admin/fiscal-years", label: "Fiscal Years" },
+    { to: "/admin/funds", label: "Funds" },
     { to: "/admin/accounts", label: "Chart of Accounts" },
     { to: "/admin/journal-entries", label: "Journal Entries" },
     { to: "/admin/invoices", label: "Invoices" },
@@ -48,6 +49,7 @@ const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
     { to: "/admin/profile", label: "My Profile" },
     { to: "/admin/scan", label: "Scan Attendance" },
     { to: "/admin/fiscal-years", label: "Fiscal Years" },
+    { to: "/admin/funds", label: "Funds" },
     { to: "/admin/accounts", label: "Chart of Accounts" },
     { to: "/admin/journal-entries", label: "Journal Entries" },
     { to: "/admin/invoices", label: "Invoices" },
