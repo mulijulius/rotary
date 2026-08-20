@@ -1,0 +1,20 @@
+-- Problem: journal_entries.entry_no is varchar(20), but every place that
+-- builds one prefixes an already-20-char doc number:
+--   bills:    'BILL-' || bill_no      (bill_no itself is already 20 chars,
+--                                      e.g. "BILL-260820120053-34")
+--             -> 25 chars, exceeds the column
+--   invoices: 'INV-'  || invoice_no   -> same problem
+--   payments: 'PMT-'  || payment_no   -> same problem
+--   reversals:'REV-'  || <original entry_no> || '-' || HH24MISSMS
+--             -> up to ~34 chars, exceeds the column
+--
+-- This never showed up while GL Settings was unconfigured, because that
+-- check raises its own exception earlier and the code never reached the
+-- journal_entries insert. Once GL Settings is filled in, marking a bill as
+-- "received" (or issuing an invoice / recording a payment) tries to insert
+-- and fails with "value too long for type character varying(20)", which the
+-- UI reports as a generic "Failed to record bill".
+--
+-- Fix: widen the column rather than truncating the doc numbers, so the
+-- source document reference stays fully readable in the ledger.
+ALTER TABLE public.journal_entries ALTER COLUMN entry_no TYPE varchar(60);
