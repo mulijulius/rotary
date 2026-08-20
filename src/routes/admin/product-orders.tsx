@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Check, X, PackageCheck } from "lucide-react";
+import { Check, X, PackageCheck, Receipt } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -33,12 +33,14 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
 type OrderRow = ProductOrder & {
   member?: { first_name: string; last_name: string } | null;
   inventory_item?: { name: string } | null;
+  invoice?: { invoice_no: string; status: string } | null;
 };
 
 function AdminProductOrders() {
   const { role } = useAuth();
   const [orders, setOrders] = useState<OrderRow[] | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [invoicingId, setInvoicingId] = useState<string | null>(null);
   const [myMemberId, setMyMemberId] = useState<number | null>(null);
 
   useEffect(() => {
@@ -64,7 +66,7 @@ function AdminProductOrders() {
       // member_id was declared inline without a custom constraint name, so
       // Postgres auto-named it product_orders_member_id_fkey.
       .select(
-        `*,member:members!product_orders_member_id_fkey(first_name,last_name),inventory_item:inventory_items(name)`
+        `*,member:members!product_orders_member_id_fkey(first_name,last_name),inventory_item:inventory_items(name),invoice:invoices(invoice_no,status)`
       )
       .order("created_at", { ascending: false });
     if (error) {
@@ -97,6 +99,28 @@ function AdminProductOrders() {
     }
   }
 
+  async function invoiceOrder(order: OrderRow) {
+    setInvoicingId(order.id.toString());
+    try {
+      const { data, error } = await supabase.rpc("create_invoice_from_product_order", {
+        p_order_id: order.id,
+      });
+      if (error) throw error;
+      const invoiceNo = (data as any)?.invoice_no;
+      toast.success(
+        invoiceNo
+          ? `Invoice ${invoiceNo} created and posted to Accounts Receivable.`
+          : "Invoice created and posted to Accounts Receivable."
+      );
+      load();
+    } catch (err) {
+      console.error("[admin/product-orders] invoice error", err);
+      toast.error(err instanceof Error ? err.message : "Failed to create invoice.");
+    } finally {
+      setInvoicingId(null);
+    }
+  }
+
   if (role && !["admin", "treasurer"].includes(role)) {
     return <div className="text-muted-foreground">You don't have access to product orders.</div>;
   }
@@ -120,20 +144,21 @@ function AdminProductOrders() {
               <TableHead>Qty</TableHead>
               <TableHead>Total</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Invoice</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {orders === null && (
               <TableRow>
-                <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
+                <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
                   Loading…
                 </TableCell>
               </TableRow>
             )}
             {orders?.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
+                <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
                   No product orders yet.
                 </TableCell>
               </TableRow>
@@ -151,6 +176,25 @@ function AdminProductOrders() {
                 </TableCell>
                 <TableCell>
                   <Badge className={STATUS_COLORS[o.status]}>{o.status}</Badge>
+                </TableCell>
+                <TableCell>
+                  {o.invoice ? (
+                    <span className="font-mono text-xs text-muted-foreground" title={`Invoice status: ${o.invoice.status}`}>
+                      {o.invoice.invoice_no}
+                    </span>
+                  ) : (o.status === "approved" || o.status === "fulfilled") ? (
+                    <button
+                      title="Create invoice for this order"
+                      disabled={invoicingId === o.id.toString()}
+                      onClick={() => invoiceOrder(o)}
+                      className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:border-foreground transition-colors disabled:opacity-50"
+                    >
+                      <Receipt className="h-3.5 w-3.5" />
+                      {invoicingId === o.id.toString() ? "Invoicing…" : "Invoice"}
+                    </button>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">—</span>
+                  )}
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex gap-2 justify-end">
