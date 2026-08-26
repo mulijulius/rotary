@@ -1,10 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Plus, Edit2, Trash2 } from "lucide-react";
+import { Plus, Edit2, Trash2, FileText, Upload, Download, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import {
+  fetchBoardPositionDocuments,
+  addBoardPositionDocument,
+  deleteBoardPositionDocument,
+  getClubDocumentUrl,
+  formatFileSize,
+  type BoardPositionDocument,
+} from "@/lib/club-documents";
 import type { Database } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,7 +50,7 @@ type FiscalYear = Database["public"]["Tables"]["fiscal_years"]["Row"];
 type Member = Database["public"]["Tables"]["members"]["Row"];
 
 function AdminBoardPositions() {
-  const { role } = useAuth();
+  const { role, session } = useAuth();
   const [positions, setPositions] = useState<(BoardPosition & { fiscal_year_name: string; member_name: string })[] | null>(null);
   const [years, setYears] = useState<FiscalYear[] | null>(null);
   const [members, setMembers] = useState<Member[] | null>(null);
@@ -57,6 +65,13 @@ function AdminBoardPositions() {
     sort_order: 0,
   });
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  const [docsPosition, setDocsPosition] = useState<(BoardPosition & { member_name: string }) | null>(null);
+  const [docs, setDocs] = useState<BoardPositionDocument[] | null>(null);
+  const [docTitle, setDocTitle] = useState("");
+  const [docFile, setDocFile] = useState<File | null>(null);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [docBusyId, setDocBusyId] = useState<number | null>(null);
 
   useEffect(() => {
     loadYears();
@@ -203,6 +218,93 @@ function AdminBoardPositions() {
       toast.error("Failed to delete board position.");
     } finally {
       setBusyId(null);
+    }
+  }
+
+  function handleOpenDocsDialog(position: BoardPosition & { member_name: string }) {
+    setDocsPosition(position);
+    setDocTitle("");
+    setDocFile(null);
+    setDocs(null);
+    loadDocs(position.id);
+  }
+
+  function handleCloseDocsDialog() {
+    setDocsPosition(null);
+    setDocs(null);
+    setDocTitle("");
+    setDocFile(null);
+  }
+
+  async function loadDocs(boardPositionId: number) {
+    try {
+      const data = await fetchBoardPositionDocuments(boardPositionId);
+      setDocs(data);
+    } catch (err) {
+      console.error("[admin/board-positions] failed to load documents", err);
+      toast.error("Couldn't load documents.");
+      setDocs([]);
+    }
+  }
+
+  function handleDocFileChange(file: File | null) {
+    if (file && file.size > 15 * 1024 * 1024) {
+      toast.error("File must be under 15MB.");
+      return;
+    }
+    setDocFile(file);
+  }
+
+  async function handleUploadDoc() {
+    if (!docsPosition) return;
+    if (!docTitle.trim()) {
+      toast.error("Give the document a title (e.g. \"Meeting minutes – 12 Aug 2026\").");
+      return;
+    }
+    if (!docFile) {
+      toast.error("Choose a file to upload.");
+      return;
+    }
+    setUploadingDoc(true);
+    try {
+      const doc = await addBoardPositionDocument(docsPosition.id, docFile, docTitle.trim(), session?.user.id ?? null);
+      setDocs((prev) => [doc, ...(prev || [])]);
+      setDocTitle("");
+      setDocFile(null);
+      toast.success("Document uploaded.");
+    } catch (err) {
+      console.error("[admin/board-positions] document upload error", err);
+      toast.error(err instanceof Error ? err.message : "Failed to upload document.");
+    } finally {
+      setUploadingDoc(false);
+    }
+  }
+
+  async function handleViewDoc(doc: BoardPositionDocument) {
+    setDocBusyId(doc.id);
+    try {
+      const url = await getClubDocumentUrl(doc.file_path);
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      console.error("[admin/board-positions] document view error", err);
+      toast.error("Couldn't open the document.");
+    } finally {
+      setDocBusyId(null);
+    }
+  }
+
+  async function handleDeleteDoc(doc: BoardPositionDocument) {
+    if (!confirm(`Delete "${doc.title}"? This cannot be undone.`)) return;
+    setDocBusyId(doc.id);
+    try {
+      await deleteBoardPositionDocument(doc);
+      setDocs((prev) => (prev || []).filter((d) => d.id !== doc.id));
+      toast.success("Document deleted.");
+    } catch (err) {
+      console.error("[admin/board-positions] document delete error", err);
+      toast.error("Failed to delete document.");
+    } finally {
+      setDocBusyId(null);
     }
   }
 
@@ -357,6 +459,13 @@ function AdminBoardPositions() {
                 <TableCell className="text-right">
                   <div className="flex gap-2 justify-end">
                     <button
+                      onClick={() => handleOpenDocsDialog(p)}
+                      title="Documents"
+                      className="p-1 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <FileText className="h-4 w-4" />
+                    </button>
+                    <button
                       onClick={() => handleOpenDialog(p)}
                       title="Edit"
                       className="p-1 text-muted-foreground hover:text-foreground transition-colors"
@@ -378,6 +487,114 @@ function AdminBoardPositions() {
           </TableBody>
         </Table>
       </div>
+
+      <Dialog open={!!docsPosition} onOpenChange={(open) => !open && handleCloseDocsDialog()}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Documents{docsPosition ? ` — ${docsPosition.title} (${docsPosition.member_name})` : ""}
+            </DialogTitle>
+          </DialogHeader>
+          {docsPosition && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Meeting minutes, handover notes, or any other document tied to this position. Any signed-in member
+                can view or download what's uploaded here.
+              </p>
+
+              <div className="space-y-2 rounded-lg border border-border p-3">
+                <div>
+                  <Label htmlFor="docTitle">Title *</Label>
+                  <Input
+                    id="docTitle"
+                    value={docTitle}
+                    onChange={(e) => setDocTitle(e.target.value)}
+                    placeholder='e.g. "Meeting minutes – 12 Aug 2026"'
+                  />
+                </div>
+                {docFile ? (
+                  <div className="flex items-center justify-between rounded-lg border border-border bg-muted p-2 text-sm">
+                    <span className="flex items-center gap-2 truncate">
+                      <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span className="truncate">{docFile.name}</span>
+                      <span className="shrink-0 text-xs text-muted-foreground">{formatFileSize(docFile.size)}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleDocFileChange(null)}
+                      className="p-1 text-muted-foreground hover:text-destructive transition-colors"
+                      title="Remove file"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground hover:border-primary hover:text-foreground transition-colors">
+                    <Upload className="h-4 w-4" />
+                    Choose a file
+                    <input
+                      type="file"
+                      className="hidden"
+                      onChange={(e) => handleDocFileChange(e.target.files?.[0] || null)}
+                    />
+                  </label>
+                )}
+                <Button onClick={handleUploadDoc} disabled={uploadingDoc} size="sm" className="w-full gap-2">
+                  <Upload className="h-3.5 w-3.5" />
+                  {uploadingDoc ? "Uploading…" : "Upload Document"}
+                </Button>
+              </div>
+
+              <div className="space-y-2">
+                {docs === null && <p className="py-6 text-center text-sm text-muted-foreground">Loading…</p>}
+                {docs?.length === 0 && (
+                  <p className="py-6 text-center text-sm text-muted-foreground">No documents uploaded yet.</p>
+                )}
+                {docs?.map((doc) => (
+                  <div
+                    key={doc.id}
+                    className="flex items-center justify-between gap-2 rounded-lg border border-border p-2"
+                  >
+                    <div className="flex min-w-0 items-center gap-2">
+                      <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-foreground">{doc.title}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {doc.file_name}
+                          {doc.file_size ? ` · ${formatFileSize(doc.file_size)}` : ""} ·{" "}
+                          {new Date(doc.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 gap-1">
+                      <button
+                        onClick={() => handleViewDoc(doc)}
+                        disabled={docBusyId === doc.id}
+                        title="View / download"
+                        className="p-1 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                      >
+                        <Download className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteDoc(doc)}
+                        disabled={docBusyId === doc.id}
+                        title="Delete"
+                        className="p-1 text-red-500 hover:text-red-700 transition-colors disabled:opacity-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <Button variant="outline" onClick={handleCloseDocsDialog} className="w-full">
+                Close
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
