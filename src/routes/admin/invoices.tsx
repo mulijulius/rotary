@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Eye, Trash2, Banknote, Ban } from "lucide-react";
+import { Plus, Eye, Trash2, Banknote, Ban, Paperclip, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { getClubDocumentUrl, uploadClubDocument, deleteClubDocumentByPath, formatFileSize } from "@/lib/club-documents";
 import type { Database } from "@/integrations/supabase/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -102,6 +103,8 @@ function AdminInvoices() {
     status: "draft" as InvoiceStatus,
   });
   const [lines, setLines] = useState<LineDraft[]>([emptyLine()]);
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [viewingAttachmentId, setViewingAttachmentId] = useState<number | null>(null);
 
   const [paymentInvoice, setPaymentInvoice] = useState<(Invoice & { total?: number }) | null>(null);
   const [paymentForm, setPaymentForm] = useState({
@@ -186,11 +189,35 @@ function AdminInvoices() {
       status: "draft",
     });
     setLines([emptyLine()]);
+    setAttachmentFile(null);
     setOpenDialog(true);
   }
 
   function handleCloseDialog() {
     setOpenDialog(false);
+    setAttachmentFile(null);
+  }
+
+  function handleAttachmentChange(file: File | null) {
+    if (file && file.size > 15 * 1024 * 1024) {
+      toast.error("File must be under 15MB.");
+      return;
+    }
+    setAttachmentFile(file);
+  }
+
+  async function handleViewAttachment(invoice: Invoice) {
+    if (!invoice.attachment_path) return;
+    setViewingAttachmentId(invoice.id);
+    try {
+      const url = await getClubDocumentUrl(invoice.attachment_path);
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      console.error("[admin/invoices] attachment view error", err);
+      toast.error("Couldn't open the attachment.");
+    } finally {
+      setViewingAttachmentId(null);
+    }
   }
 
   function updateLine(index: number, patch: Partial<LineDraft>) {
@@ -229,6 +256,13 @@ function AdminInvoices() {
     setSaving(true);
     try {
       const invoiceNo = makeDocNo("INV");
+
+      let attachment: { path: string; name: string; size: number } | null = null;
+      if (attachmentFile) {
+        const path = await uploadClubDocument(`invoices/${invoiceNo}`, attachmentFile);
+        attachment = { path, name: attachmentFile.name, size: attachmentFile.size };
+      }
+
       const { data: invoice, error: invoiceError } = await supabase
         .from("invoices")
         .insert({
@@ -239,6 +273,14 @@ function AdminInvoices() {
           due_date: formData.due_date,
           memo: formData.memo || null,
           status: formData.status,
+          ...(attachment
+            ? {
+                attachment_path: attachment.path,
+                attachment_name: attachment.name,
+                attachment_size: attachment.size,
+                attachment_uploaded_at: new Date().toISOString(),
+              }
+            : {}),
         })
         .select()
         .single();
@@ -261,6 +303,7 @@ function AdminInvoices() {
         // behind. This delete is always allowed here since an invoice with
         // no journal entry yet is never locked.
         await supabase.from("invoices").delete().eq("id", invoice.id);
+        if (attachment) await deleteClubDocumentByPath(attachment.path);
         throw linesError;
       }
 
@@ -476,6 +519,40 @@ function AdminInvoices() {
               </div>
 
               <div>
+                <Label>Attachment</Label>
+                <p className="mb-2 text-xs text-muted-foreground">
+                  Attach the supporting document or photo (receipt, request letter, etc). Optional, up to 15MB.
+                </p>
+                {attachmentFile ? (
+                  <div className="flex items-center justify-between rounded-lg border border-border bg-muted p-2 text-sm">
+                    <span className="flex items-center gap-2 truncate">
+                      <Paperclip className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span className="truncate">{attachmentFile.name}</span>
+                      <span className="shrink-0 text-xs text-muted-foreground">{formatFileSize(attachmentFile.size)}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleAttachmentChange(null)}
+                      className="p-1 text-muted-foreground hover:text-destructive transition-colors"
+                      title="Remove attachment"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground hover:border-primary hover:text-foreground transition-colors">
+                    <Upload className="h-4 w-4" />
+                    Choose a file
+                    <input
+                      type="file"
+                      className="hidden"
+                      onChange={(e) => handleAttachmentChange(e.target.files?.[0] || null)}
+                    />
+                  </label>
+                )}
+              </div>
+
+              <div>
                 <div className="flex items-center justify-between mb-2">
                   <Label>Line Items *</Label>
                   <Button type="button" variant="outline" size="sm" onClick={addLine} className="gap-1">
@@ -621,6 +698,16 @@ function AdminInvoices() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
+                      {invoice.attachment_path && (
+                        <button
+                          title={invoice.attachment_name ? `View attachment: ${invoice.attachment_name}` : "View attachment"}
+                          onClick={() => handleViewAttachment(invoice)}
+                          disabled={viewingAttachmentId === invoice.id}
+                          className="p-1 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                        >
+                          <Paperclip className="h-4 w-4" />
+                        </button>
+                      )}
                       {canPay && (
                         <button
                           title="Record payment"
