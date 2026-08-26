@@ -420,6 +420,47 @@ export type Database = {
           },
         ]
       }
+      board_position_documents: {
+        Row: {
+          board_position_id: number
+          created_at: string
+          file_name: string
+          file_path: string
+          file_size: number | null
+          id: number
+          title: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          board_position_id: number
+          created_at?: string
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          id?: number
+          title: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          board_position_id?: number
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          id?: number
+          title?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_position_documents_board_position_id_fkey"
+            columns: ["board_position_id"]
+            isOneToOne: false
+            referencedRelation: "board_positions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_messages: {
         Row: {
           email: string
@@ -1190,6 +1231,10 @@ export type Database = {
       }
       invoices: {
         Row: {
+          attachment_name: string | null
+          attachment_path: string | null
+          attachment_size: number | null
+          attachment_uploaded_at: string | null
           created_at: string
           due_date: string
           fiscal_year_id: number
@@ -1202,6 +1247,10 @@ export type Database = {
           status: Database["public"]["Enums"]["invoice_status"]
         }
         Insert: {
+          attachment_name?: string | null
+          attachment_path?: string | null
+          attachment_size?: number | null
+          attachment_uploaded_at?: string | null
           created_at?: string
           due_date: string
           fiscal_year_id: number
@@ -1214,6 +1263,10 @@ export type Database = {
           status?: Database["public"]["Enums"]["invoice_status"]
         }
         Update: {
+          attachment_name?: string | null
+          attachment_path?: string | null
+          attachment_size?: number | null
+          attachment_uploaded_at?: string | null
           created_at?: string
           due_date?: string
           fiscal_year_id?: number
