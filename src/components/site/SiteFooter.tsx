@@ -1,6 +1,5 @@
 import { Link } from "@tanstack/react-router";
 
-import { RotaryWheel } from "./RotaryWheel";
 import { CLUB } from "@/lib/club-content";
 
 export function SiteFooter() {
@@ -9,12 +8,11 @@ export function SiteFooter() {
       <div className="mx-auto max-w-[1180px] px-6 py-16">
         <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
           <div>
-            <div className="flex items-center gap-3">
-              <RotaryWheel size={34} />
-              <span className="font-[family-name:var(--font-display)] text-[15px] font-bold text-background">
-                {CLUB.name}
-              </span>
-            </div>
+            <img
+              src="/rotary-club-logo-white.png"
+              alt={CLUB.name}
+              className="h-9 w-auto"
+            />
             <p className="mt-4 text-sm text-mist-strong/70">
               Part of Rotary International, {CLUB.district}. {CLUB.motto}.
             </p>
