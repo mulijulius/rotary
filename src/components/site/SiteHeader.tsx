@@ -2,9 +2,6 @@ import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
 
-import { RotaryWheel } from "./RotaryWheel";
-import { CLUB } from "@/lib/club-content";
-
 const links = [
   { to: "/", label: "Home" },
   { to: "/leadership", label: "Leadership" },
@@ -22,16 +19,12 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur-md">
       <div className="mx-auto flex max-w-[1180px] items-center justify-between gap-4 px-6 py-3">
-        <Link to="/" className="flex items-center gap-3" onClick={() => setOpen(false)}>
-          <RotaryWheel size={40} />
-          <span className="leading-tight">
-            <span className="block font-[family-name:var(--font-display)] text-[16px] font-bold text-navy">
-              {CLUB.name}
-            </span>
-            <span className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-gold-deep">
-              {CLUB.motto}
-            </span>
-          </span>
+        <Link to="/" className="flex items-center" onClick={() => setOpen(false)}>
+          <img
+            src="/rotary-club-logo.png"
+            alt="Rotary Club of Athi River — Create Lasting Impact"
+            className="h-9 w-auto sm:h-10"
+          />
         </Link>
 
         <nav className="hidden xl:block">
