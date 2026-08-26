@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Menu, X, LogOut } from "lucide-react";
 import { toast } from "sonner";
 
@@ -131,11 +131,12 @@ function AdminLayout() {
         body={
           roleStatus === "revoked"
             ? "An admin has revoked your back-office access. Contact a club officer if you believe this is a mistake."
-            : "This account hasn't requested a role yet. Sign up again to request one, or contact a club officer."
+            : "This account hasn't requested a role yet. Pick one below to file a request, or contact a club officer."
         }
         onSignOut={signOut}
-        showSignupLink={roleStatus === null}
-      />
+      >
+        {roleStatus === null && <RequestRoleForm userId={session.user.id} />}
+      </StatusScreen>
     );
   }
 
@@ -219,12 +220,12 @@ function StatusScreen({
   title,
   body,
   onSignOut,
-  showSignupLink = false,
+  children,
 }: {
   title: string;
   body: string;
   onSignOut: () => void;
-  showSignupLink?: boolean;
+  children?: ReactNode;
 }) {
   return (
     <div className="flex min-h-[70vh] items-center justify-center px-6">
@@ -232,15 +233,8 @@ function StatusScreen({
         <RotaryWheel size={36} className="mx-auto" />
         <h1 className="mt-4 text-xl font-bold text-foreground">{title}</h1>
         <p className="mt-2 text-sm text-muted-foreground">{body}</p>
+        {children}
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-          {showSignupLink && (
-            <Link
-              to="/signup"
-              className="rounded-full bg-gold px-5 py-2.5 text-sm font-bold text-navy transition-colors hover:bg-gold-deep"
-            >
-              Request a role
-            </Link>
-          )}
           <button
             type="button"
             onClick={onSignOut}
@@ -251,5 +245,64 @@ function StatusScreen({
         </div>
       </div>
     </div>
+  );
+}
+
+const REQUESTABLE_ROLES: AppRole[] = ["member", "editor", "secretary", "treasurer", "admin"];
+
+// Lets an already-authenticated user with no live user_roles row (most
+// commonly a first-time Google sign-in, which never gets to fill in the
+// requested_role passed via the password sign-up form) file a pending role
+// request directly, instead of being sent back through /signup — which
+// would try to create a second, conflicting account for the same email.
+function RequestRoleForm({ userId }: { userId: string }) {
+  const [role, setRole] = useState<AppRole>("member");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
+  async function onSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setSubmitting(true);
+    const { error } = await supabase
+      .from("user_roles")
+      .insert({ user_id: userId, role, status: "pending" });
+    setSubmitting(false);
+
+    if (error) {
+      toast.error(error.message || "Could not file that request.");
+      return;
+    }
+
+    toast.success(`Request for ${roleLabel(role)} filed — an admin needs to approve it.`);
+    setSubmitted(true);
+    // Reload so useAuth() picks up the new pending row and the layout
+    // switches to the "Request pending" screen.
+    window.location.reload();
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="mt-5 text-left">
+      <label className="block">
+        <span className="mb-1.5 block text-sm font-semibold text-foreground">Role you're requesting</span>
+        <select
+          value={role}
+          onChange={(e) => setRole(e.target.value as AppRole)}
+          className="w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm outline-hidden focus:border-primary focus:ring-3 focus:ring-ring/20"
+        >
+          {REQUESTABLE_ROLES.map((r) => (
+            <option key={r} value={r}>
+              {roleLabel(r)}
+            </option>
+          ))}
+        </select>
+      </label>
+      <button
+        type="submit"
+        disabled={submitting || submitted}
+        className="mt-4 inline-flex w-full items-center justify-center rounded-full bg-gold px-6 py-2.5 text-sm font-bold text-navy transition-colors hover:bg-gold-deep disabled:opacity-60"
+      >
+        {submitting ? "Filing request…" : "Request this role"}
+      </button>
+    </form>
   );
 }
