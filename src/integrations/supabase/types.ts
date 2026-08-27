@@ -2466,6 +2466,9 @@ export type Database = {
           bio: string | null
           first_name: string | null
           fiscal_year: string | null
+          fiscal_year_end: string | null
+          fiscal_year_id: number | null
+          fiscal_year_start: string | null
           id: number | null
           last_name: string | null
           photo_url: string | null
