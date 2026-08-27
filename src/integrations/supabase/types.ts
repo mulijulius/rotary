@@ -2477,6 +2477,20 @@ export type Database = {
         }
         Relationships: []
       }
+      v_public_meetings: {
+        Row: {
+          description: string | null
+          end_time: string | null
+          id: number | null
+          is_mandatory: boolean | null
+          meeting_date: string | null
+          meeting_type: Database["public"]["Enums"]["meeting_type"] | null
+          start_time: string | null
+          title: string | null
+          venue: string | null
+        }
+        Relationships: []
+      }
       v_role_audit: {
         Row: {
           action: Database["public"]["Enums"]["role_audit_action"] | null
