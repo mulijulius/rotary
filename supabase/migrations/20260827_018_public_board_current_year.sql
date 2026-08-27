@@ -1,3 +1,6 @@
+## Full corrected script (drop + recreate the view)
+
+```sql
 -- Fixes the public /leadership page, which currently renders a
 -- hard-coded array in src/lib/club-content.ts instead of reading from
 -- board_positions. Two problems are addressed here:
@@ -22,7 +25,9 @@
 -- Column set, join shape, and the public SELECT grant are otherwise
 -- unchanged from the original migration.
 
-CREATE OR REPLACE VIEW public.v_public_board AS
+DROP VIEW IF EXISTS public.v_public_board;
+
+CREATE VIEW public.v_public_board AS
 SELECT
   bp.id,
   bp.title,
@@ -40,7 +45,7 @@ JOIN public.members m ON m.id = bp.member_id
 JOIN public.fiscal_years fy ON fy.id = bp.fiscal_year_id
 ORDER BY fy.start_date DESC, bp.sort_order ASC;
 
--- CREATE OR REPLACE VIEW preserves the view's OID, so the existing grant
--- from the original migration still applies — re-issued here so this
--- migration is safe to run standalone / against a fresh database.
+-- Re-issue grant so this migration is safe to run standalone / against a
+-- fresh database.
 GRANT SELECT ON public.v_public_board TO anon, authenticated;
+```
