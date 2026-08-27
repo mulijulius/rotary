@@ -106,16 +106,9 @@ export const objectOfRotary = [
   },
 ];
 
-export const board = [
-  { initials: "JW", name: "Jane Wambui", role: "President", bio: "Leads the board and represents the club to District 9212 and the community.", tone: "bg-royal-bright" },
-  { initials: "DM", name: "David Mwangi", role: "Immediate Past President", bio: "Provides continuity and mentors the incoming leadership team.", tone: "bg-gold-deep" },
-  { initials: "AK", name: "Alice Kamau", role: "President-Elect", bio: "Prepares to lead the club in the next Rotary year.", tone: "bg-turquoise" },
-  { initials: "SO", name: "Samuel Otieno", role: "Secretary", bio: "Maintains club records, minutes, and official correspondence.", tone: "bg-violet" },
-  { initials: "MN", name: "Mary Njeri", role: "Treasurer", bio: "Oversees club finances, dues, and financial reporting to the board.", tone: "bg-cranberry" },
-  { initials: "PK", name: "Peter Kariuki", role: "Sergeant-at-Arms", bio: "Keeps weekly meetings on track and enforces club traditions.", tone: "bg-orange" },
-  { initials: "RA", name: "Rose Achieng", role: "Club Service Director", bio: "Coordinates fellowship, membership, and public image committees.", tone: "bg-royal" },
-  { initials: "FM", name: "Francis Mutua", role: "Foundation & Service Projects Director", bio: "Leads community and international service project committees.", tone: "bg-gold" },
-];
+// The board/leadership list used to be hard-coded here. It's now read
+// live from board_positions (via v_public_board) — see
+// src/lib/public-board.ts and src/routes/leadership.tsx.
 
 export const projectFilters = [
   "All Projects",
