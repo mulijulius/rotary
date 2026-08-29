@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { Eyebrow, SectionHead } from "@/components/site/PageIntro";
 import { RotaryWheel } from "@/components/site/RotaryWheel";
+import { HomeSlideshow } from "@/components/site/HomeSlideshow";
 import { CLUB, focusPreview, heroStats, homeHighlights } from "@/lib/club-content";
 
 export const Route = createFileRoute("/")({
@@ -29,6 +30,8 @@ export const Route = createFileRoute("/")({
 function HomePage() {
   return (
     <>
+      <HomeSlideshow />
+
       <section className="hero-surface relative overflow-hidden py-24 text-background">
         <div className="mx-auto grid max-w-[1180px] items-center gap-10 px-6 lg:grid-cols-[1.1fr_0.9fr]">
           <div>
@@ -37,11 +40,13 @@ function HomePage() {
               {CLUB.district} · Chartered [Year]
             </span>
             <h1 className="mt-4 text-[clamp(34px,5vw,54px)] text-background">
-              People of action, <em className="not-italic text-gold">serving Athi River</em> and beyond.
+              People of action, <em className="not-italic text-gold">serving Athi River</em> and
+              beyond.
             </h1>
             <p className="mt-4 max-w-[520px] text-[18px] text-mist-strong/85">
-              We are a chapter of Rotary International bringing together local business and professional leaders to
-              take practical action on education, health, water, and economic opportunity in our community.
+              We are a chapter of Rotary International bringing together local business and
+              professional leaders to take practical action on education, health, water, and
+              economic opportunity in our community.
             </p>
             <div className="mt-8 flex flex-wrap gap-3.5">
               <Link
@@ -60,7 +65,9 @@ function HomePage() {
             <dl className="mt-11 flex flex-wrap gap-9">
               {heroStats.map((s) => (
                 <div key={s.label}>
-                  <dt className="font-[family-name:var(--font-display)] text-[28px] font-bold text-gold">{s.value}</dt>
+                  <dt className="font-[family-name:var(--font-display)] text-[28px] font-bold text-gold">
+                    {s.value}
+                  </dt>
                   <dd className="text-[13px] text-mist-strong/75">{s.label}</dd>
                 </div>
               ))}
@@ -93,7 +100,9 @@ function HomePage() {
         <div className="mx-auto grid max-w-[1180px] items-center gap-14 px-6 lg:grid-cols-[0.9fr_1.1fr]">
           <div className="gradient-royal relative h-[380px] overflow-hidden rounded-3xl shadow-[var(--shadow-card-lg)]">
             <div className="absolute bottom-5 left-5 flex items-center gap-3 rounded-2xl bg-card px-4 py-3.5 shadow-[var(--shadow-card)]">
-              <strong className="font-[family-name:var(--font-display)] text-xl text-navy">45+</strong>
+              <strong className="font-[family-name:var(--font-display)] text-xl text-navy">
+                45+
+              </strong>
               <span className="text-xs text-muted-foreground">
                 Projects delivered
                 <br />
@@ -103,15 +112,17 @@ function HomePage() {
           </div>
           <div>
             <Eyebrow>Who We Are</Eyebrow>
-            <h2 className="mt-4 text-[clamp(24px,3vw,32px)]">A club of professionals, united by service.</h2>
+            <h2 className="mt-4 text-[clamp(24px,3vw,32px)]">
+              A club of professionals, united by service.
+            </h2>
             <p className="mt-4 text-muted-foreground">
-              The Rotary Club of Athi River brings together business leaders, professionals, and community champions
-              who volunteer their time, skills, and resources to solve real problems in health, education, water and
-              sanitation, and economic development.
+              The Rotary Club of Athi River brings together business leaders, professionals, and
+              community champions who volunteer their time, skills, and resources to solve real
+              problems in health, education, water and sanitation, and economic development.
             </p>
             <p className="mt-3 text-muted-foreground">
-              As part of Rotary International, we connect local action to a global network of 1.4 million members
-              working toward lasting change — in our community and across the world.
+              As part of Rotary International, we connect local action to a global network of 1.4
+              million members working toward lasting change — in our community and across the world.
             </p>
             <ul className="mt-6 space-y-3">
               {[
@@ -140,8 +151,13 @@ function HomePage() {
           />
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {focusPreview.map((f) => (
-              <article key={f.title} className="rounded-xl border border-border bg-card p-6 text-center">
-                <div className={`mx-auto flex size-12 items-center justify-center rounded-xl text-xl ${f.tone}`}>
+              <article
+                key={f.title}
+                className="rounded-xl border border-border bg-card p-6 text-center"
+              >
+                <div
+                  className={`mx-auto flex size-12 items-center justify-center rounded-xl text-xl ${f.tone}`}
+                >
                   <span aria-hidden>{f.icon}</span>
                 </div>
                 <h4 className="mt-3.5 text-[15px]">{f.title}</h4>
