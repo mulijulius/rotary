@@ -855,6 +855,72 @@ export type Database = {
           },
         ]
       }
+      gallery_videos: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: number
+          placement: string | null
+          published: boolean
+          sort_order: number
+          source: Database["public"]["Enums"]["video_source"]
+          thumbnail_url: string | null
+          title: string
+          video_url: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: number
+          placement?: string | null
+          published?: boolean
+          sort_order?: number
+          source?: Database["public"]["Enums"]["video_source"]
+          thumbnail_url?: string | null
+          title: string
+          video_url: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: number
+          placement?: string | null
+          published?: boolean
+          sort_order?: number
+          source?: Database["public"]["Enums"]["video_source"]
+          thumbnail_url?: string | null
+          title?: string
+          video_url?: string
+        }
+        Relationships: []
+      }
+      slideshow_slides: {
+        Row: {
+          caption: string | null
+          created_at: string
+          id: number
+          image_url: string
+          published: boolean
+          sort_order: number
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          id?: number
+          image_url: string
+          published?: boolean
+          sort_order?: number
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          id?: number
+          image_url?: string
+          published?: boolean
+          sort_order?: number
+        }
+        Relationships: []
+      }
       inventory_counts: {
         Row: {
           count_date: string
@@ -2635,6 +2701,7 @@ export type Database = {
         | "repair"
         | "depreciation"
         | "disposal"
+      video_source: "upload" | "youtube"
       visitor_interest:
         | "general"
         | "membership"
@@ -2819,6 +2886,7 @@ export const Constants = {
         "depreciation",
         "disposal",
       ],
+      video_source: ["upload", "youtube"],
       visitor_interest: [
         "general",
         "membership",
