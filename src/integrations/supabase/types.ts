@@ -2637,6 +2637,16 @@ export type Database = {
         Returns: undefined
       }
       fn_reissue_qr_token: { Args: { _member_id: number }; Returns: string }
+      fn_save_gl_settings: {
+        Args: {
+          p_ap_account_id: number | null
+          p_ar_account_id: number | null
+          p_cash_account_id: number | null
+          p_default_fund_id: number | null
+          p_product_sales_account_id: number | null
+        }
+        Returns: Database["public"]["Tables"]["gl_settings"]["Row"]
+      }
       fn_unlink_member_account: { Args: { _member_id: number }; Returns: undefined }
       has_role: {
         Args: {
