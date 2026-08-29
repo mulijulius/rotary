@@ -3,6 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Eyebrow, SectionHead } from "@/components/site/PageIntro";
 import { RotaryWheel } from "@/components/site/RotaryWheel";
 import { HomeSlideshow } from "@/components/site/HomeSlideshow";
+import { HomeVideos } from "@/components/site/HomeVideos";
 import { CLUB, focusPreview, heroStats, homeHighlights } from "@/lib/club-content";
 
 export const Route = createFileRoute("/")({
@@ -203,6 +204,8 @@ function HomePage() {
           </div>
         </div>
       </section>
+
+      <HomeVideos />
     </>
   );
 }
