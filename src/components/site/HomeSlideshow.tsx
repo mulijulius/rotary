@@ -65,10 +65,18 @@ export function HomeSlideshow() {
               i === active ? "opacity-100" : "pointer-events-none opacity-0"
             }`}
           >
+            {/* Blurred, scaled-up backdrop so the fixed-height section never
+                shows empty bars, while the real image below stays uncropped. */}
+            <img
+              src={slide.image_url}
+              alt=""
+              aria-hidden="true"
+              className="h-full w-full scale-110 object-cover opacity-60 blur-2xl"
+            />
             <img
               src={slide.image_url}
               alt={slide.caption || ""}
-              className="h-full w-full object-cover"
+              className="absolute inset-0 h-full w-full object-contain"
               loading={i === 0 ? "eager" : "lazy"}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-navy/80 via-navy/10 to-transparent" />
