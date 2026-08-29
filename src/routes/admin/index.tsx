@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, roleLabel, type AppRole } from "@/lib/auth";
+import { ClubCalendar } from "@/components/site/ClubCalendar";
 
 export const Route = createFileRoute("/admin/")({
   component: AdminOverview,
@@ -64,6 +65,10 @@ function AdminOverview() {
         {cards === null && (
           <p className="text-sm text-muted-foreground">Loading…</p>
         )}
+      </div>
+
+      <div className="mt-8">
+        <ClubCalendar />
       </div>
     </div>
   );
