@@ -115,22 +115,28 @@ function AdminAccounts() {
   }
 
   async function handleSaveGlSettings() {
+    if (!glDraft.ar_account_id || !glDraft.ap_account_id || !glDraft.default_fund_id) {
+      toast.error("Accounts Receivable, Accounts Payable and a default Fund are required.");
+      return;
+    }
+
     setSavingGl(true);
     try {
-      const { error } = await supabase
-        .from("gl_settings")
-        .update({
-          ar_account_id: glDraft.ar_account_id,
-          ap_account_id: glDraft.ap_account_id,
-          cash_account_id: glDraft.cash_account_id,
-          default_fund_id: glDraft.default_fund_id,
-          product_sales_account_id: glDraft.product_sales_account_id,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", 1);
+      // Goes through an RPC (not a raw table update) so a permission problem
+      // raises a real, catchable error instead of RLS silently filtering the
+      // row out and leaving us unable to tell "saved" from "blocked".
+      const { data, error } = await supabase.rpc("fn_save_gl_settings", {
+        p_ar_account_id: glDraft.ar_account_id,
+        p_ap_account_id: glDraft.ap_account_id,
+        p_cash_account_id: glDraft.cash_account_id,
+        p_default_fund_id: glDraft.default_fund_id,
+        p_product_sales_account_id: glDraft.product_sales_account_id,
+      });
       if (error) throw error;
+      if (!data) throw new Error("Save did not return a row - settings were not persisted.");
+
+      setGlSettings(data);
       toast.success("GL settings saved. Bills, invoices and payments will now post using these defaults.");
-      loadGlSettings();
     } catch (err) {
       console.error("[admin/accounts] gl_settings save error", err);
       toast.error(err instanceof Error ? err.message : "Failed to save GL settings.");
