@@ -420,33 +420,42 @@ export type Database = {
           },
         ]
       }
-      board_position_documents: {
+      club_documents: {
         Row: {
-          board_position_id: number
+          board_position_id: number | null
+          category: string
           created_at: string
+          document_date: string | null
           file_name: string
           file_path: string
           file_size: number | null
+          fiscal_year_id: number | null
           id: number
           title: string
           uploaded_by: string | null
         }
         Insert: {
-          board_position_id: number
+          board_position_id?: number | null
+          category?: string
           created_at?: string
+          document_date?: string | null
           file_name: string
           file_path: string
           file_size?: number | null
+          fiscal_year_id?: number | null
           id?: number
           title: string
           uploaded_by?: string | null
         }
         Update: {
-          board_position_id?: number
+          board_position_id?: number | null
+          category?: string
           created_at?: string
+          document_date?: string | null
           file_name?: string
           file_path?: string
           file_size?: number | null
+          fiscal_year_id?: number | null
           id?: number
           title?: string
           uploaded_by?: string | null
@@ -457,6 +466,13 @@ export type Database = {
             columns: ["board_position_id"]
             isOneToOne: false
             referencedRelation: "board_positions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_documents_fiscal_year_id_fkey"
+            columns: ["fiscal_year_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_years"
             referencedColumns: ["id"]
           },
         ]
@@ -2566,6 +2582,26 @@ export type Database = {
           type: Database["public"]["Enums"]["account_type"] | null
           variance: number | null
           variance_percent: number | null
+        }
+        Relationships: []
+      }
+      v_club_documents: {
+        Row: {
+          board_position_id: number | null
+          category: string | null
+          created_at: string | null
+          document_date: string | null
+          file_name: string | null
+          file_path: string | null
+          file_size: number | null
+          fiscal_year_id: number | null
+          fiscal_year_name: string | null
+          id: number | null
+          position_title: string | null
+          title: string | null
+          uploaded_by: string | null
+          uploader_position_first_name: string | null
+          uploader_position_last_name: string | null
         }
         Relationships: []
       }
