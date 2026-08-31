@@ -1712,6 +1712,48 @@ export type Database = {
           },
         ]
       }
+      editor_events: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          end_time: string | null
+          event_date: string
+          id: number
+          is_public: boolean
+          start_time: string | null
+          title: string
+          updated_at: string
+          venue: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_time?: string | null
+          event_date: string
+          id?: number
+          is_public?: boolean
+          start_time?: string | null
+          title: string
+          updated_at?: string
+          venue?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_time?: string | null
+          event_date?: string
+          id?: number
+          is_public?: boolean
+          start_time?: string | null
+          title?: string
+          updated_at?: string
+          venue?: string | null
+        }
+        Relationships: []
+      }
       meetings: {
         Row: {
           checkin_closes_at: string | null
@@ -2540,6 +2582,18 @@ export type Database = {
           photo_url: string | null
           sort_order: number | null
           title: string | null
+        }
+        Relationships: []
+      }
+      v_public_editor_events: {
+        Row: {
+          description: string | null
+          end_time: string | null
+          event_date: string | null
+          id: number | null
+          start_time: string | null
+          title: string | null
+          venue: string | null
         }
         Relationships: []
       }
