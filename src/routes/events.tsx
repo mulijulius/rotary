@@ -12,7 +12,7 @@ import {
   startOfMonth,
   subMonths,
 } from "date-fns";
-import { ChevronLeft, ChevronRight, Clock, MapPin, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, MapPin, Users, Sparkles } from "lucide-react";
 
 import { SectionHead } from "@/components/site/PageIntro";
 import { CLUB } from "@/lib/club-content";
@@ -50,8 +50,12 @@ export const Route = createFileRoute("/events")({
 });
 
 type PublicMeeting = Database["public"]["Views"]["v_public_meetings"]["Row"];
+type PublicEditorEvent = Database["public"]["Views"]["v_public_editor_events"]["Row"];
 
 type MeetingStatus = "past" | "soon" | "upcoming";
+// Editor-posted events always render pink, regardless of how soon they are —
+// that's what distinguishes them on the calendar from the meeting statuses.
+type DayStatus = MeetingStatus | "editorEvent";
 
 // A meeting counts as "almost due" (yellow) once it's this many days away
 // or closer (0 = today).
@@ -65,16 +69,18 @@ const MEETING_TYPE_LABELS: Record<string, string> = {
   fellowship: "Fellowship",
 };
 
-const STATUS_STYLES: Record<MeetingStatus, string> = {
+const STATUS_STYLES: Record<DayStatus, string> = {
   upcoming: "bg-emerald-600 text-white hover:bg-emerald-700",
   soon: "bg-amber-500 text-white hover:bg-amber-600",
   past: "bg-rose-600/90 text-white hover:bg-rose-700",
+  editorEvent: "bg-pink-500 text-white hover:bg-pink-600",
 };
 
-const STATUS_LABELS: Record<MeetingStatus, string> = {
+const STATUS_LABELS: Record<DayStatus, string> = {
   upcoming: "Upcoming",
   soon: "Coming up soon",
   past: "Past",
+  editorEvent: "Club event",
 };
 
 function meetingStatus(meetingDate: string): MeetingStatus {
@@ -99,6 +105,7 @@ function meetingTypeLabel(type: string): string {
 
 function EventsPage() {
   const [meetings, setMeetings] = useState<PublicMeeting[] | null>(null);
+  const [editorEvents, setEditorEvents] = useState<PublicEditorEvent[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [monthCursor, setMonthCursor] = useState(() => startOfMonth(new Date()));
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
@@ -107,20 +114,32 @@ function EventsPage() {
     let cancelled = false;
 
     async function load() {
-      const { data, error } = await supabase
-        .from("v_public_meetings")
-        .select("*")
-        .order("meeting_date", { ascending: true });
+      const [meetingsRes, editorEventsRes] = await Promise.all([
+        supabase.from("v_public_meetings").select("*").order("meeting_date", { ascending: true }),
+        supabase
+          .from("v_public_editor_events")
+          .select("*")
+          .order("event_date", { ascending: true }),
+      ]);
 
       if (cancelled) return;
 
-      if (error) {
-        console.error("[events] failed to load public meetings", error);
+      if (meetingsRes.error) {
+        console.error("[events] failed to load public meetings", meetingsRes.error);
         setLoadError("Couldn't load the calendar right now. Please try again shortly.");
         setMeetings([]);
-        return;
+      } else {
+        setMeetings(meetingsRes.data ?? []);
       }
-      setMeetings(data ?? []);
+
+      if (editorEventsRes.error) {
+        // Editor events are additive — don't blank out the meetings calendar
+        // over this, just log it and carry on with an empty list.
+        console.error("[events] failed to load editor events", editorEventsRes.error);
+        setEditorEvents([]);
+      } else {
+        setEditorEvents(editorEventsRes.data ?? []);
+      }
     }
 
     load();
@@ -143,11 +162,32 @@ function EventsPage() {
     return map;
   }, [meetings]);
 
+  // Same grouping for editor-posted events, which live on their own table
+  // (public.editor_events) so back-office Editors can post them without
+  // touching the meetings/attendance workflow.
+  const editorEventsByDate = useMemo(() => {
+    const map = new Map<string, PublicEditorEvent[]>();
+    for (const e of editorEvents ?? []) {
+      if (!e.event_date) continue;
+      const key = e.event_date.slice(0, 10);
+      const existing = map.get(key);
+      if (existing) existing.push(e);
+      else map.set(key, [e]);
+    }
+    return map;
+  }, [editorEvents]);
+
   const upcomingMeetings = useMemo(() => {
     return (meetings ?? [])
       .filter((m) => m.meeting_date && meetingStatus(m.meeting_date) !== "past")
       .slice(0, 8);
   }, [meetings]);
+
+  const upcomingEditorEvents = useMemo(() => {
+    return (editorEvents ?? [])
+      .filter((e) => e.event_date && differenceInCalendarDays(parseISO(e.event_date), new Date()) >= 0)
+      .slice(0, 8);
+  }, [editorEvents]);
 
   const monthStart = startOfMonth(monthCursor);
   const monthEnd = endOfMonth(monthCursor);
@@ -160,9 +200,11 @@ function EventsPage() {
   ];
 
   const selectedMeetings = selectedDateKey ? (meetingsByDate.get(selectedDateKey) ?? []) : [];
+  const selectedEditorEvents = selectedDateKey ? (editorEventsByDate.get(selectedDateKey) ?? []) : [];
   const selectedDateLabel = selectedDateKey
     ? format(parseISO(selectedDateKey), "EEEE, MMMM d, yyyy")
     : "";
+  const selectedCount = selectedMeetings.length + selectedEditorEvents.length;
 
   return (
     <section className="py-20">
@@ -170,7 +212,7 @@ function EventsPage() {
         <SectionHead
           eyebrow="Events"
           title="Club Calendar"
-          copy="Weekly meetings, fundraisers and service projects — kept up to date by the club secretary."
+          copy="Weekly meetings, fundraisers and service projects — kept up to date by the club secretary and editors."
         />
 
         <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
@@ -200,7 +242,7 @@ function EventsPage() {
                 </Button>
               </div>
               <span className="hidden text-xs font-semibold uppercase tracking-wide text-muted-foreground sm:inline">
-                Meetings highlighted
+                Meetings & events highlighted
               </span>
             </div>
 
@@ -214,21 +256,35 @@ function EventsPage() {
                 if (!cell) return <span key={`blank-${i}`} />;
 
                 const dayMeetings = meetingsByDate.get(cell.key) ?? [];
+                const dayEditorEvents = editorEventsByDate.get(cell.key) ?? [];
+                const hasEditorEvent = dayEditorEvents.length > 0;
                 const hasMeeting = dayMeetings.length > 0;
-                const status = hasMeeting ? meetingStatus(dayMeetings[0].meeting_date!) : null;
-                const titleText = hasMeeting
-                  ? dayMeetings.map((m) => m.title).join(", ")
+                const hasAny = hasMeeting || hasEditorEvent;
+
+                // Editor-posted events always win the pink highlight for the
+                // day, even if a meeting also falls on the same date — the
+                // day-detail dialog below still lists both.
+                const status: DayStatus | null = hasEditorEvent
+                  ? "editorEvent"
+                  : hasMeeting
+                    ? meetingStatus(dayMeetings[0].meeting_date!)
+                    : null;
+
+                const titleText = hasAny
+                  ? [...dayMeetings.map((m) => m.title), ...dayEditorEvents.map((e) => e.title)].join(
+                      ", ",
+                    )
                   : undefined;
 
                 return (
                   <button
                     key={cell.key}
                     type="button"
-                    disabled={!hasMeeting}
+                    disabled={!hasAny}
                     title={titleText}
-                    onClick={() => hasMeeting && setSelectedDateKey(cell.key)}
+                    onClick={() => hasAny && setSelectedDateKey(cell.key)}
                     className={`flex aspect-square items-center justify-center rounded-lg text-sm font-medium transition-colors ${
-                      hasMeeting
+                      hasAny
                         ? `cursor-pointer ${STATUS_STYLES[status!]}`
                         : "cursor-default bg-muted text-foreground"
                     } ${isTodayFn(cell.date) ? "ring-2 ring-offset-1 ring-navy" : ""}`}
@@ -249,6 +305,9 @@ function EventsPage() {
               <span className="flex items-center gap-1.5">
                 <span className="size-2.5 rounded-full bg-rose-600/90" /> Past
               </span>
+              <span className="flex items-center gap-1.5">
+                <span className="size-2.5 rounded-full bg-pink-500" /> Club event (editor)
+              </span>
             </div>
 
             <p className="mt-5 text-sm text-muted-foreground">
@@ -259,20 +318,23 @@ function EventsPage() {
           </div>
 
           <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-card)]">
-            {meetings === null && (
+            {meetings === null && editorEvents === null && (
               <li className="p-6 text-center text-sm text-muted-foreground">Loading events…</li>
             )}
-            {meetings !== null && upcomingMeetings.length === 0 && (
-              <li className="p-6 text-center text-sm text-muted-foreground">
-                No upcoming public meetings scheduled yet.
-              </li>
-            )}
+            {meetings !== null &&
+              editorEvents !== null &&
+              upcomingMeetings.length === 0 &&
+              upcomingEditorEvents.length === 0 && (
+                <li className="p-6 text-center text-sm text-muted-foreground">
+                  No upcoming public meetings or events scheduled yet.
+                </li>
+              )}
             {upcomingMeetings.map((e) => {
               const date = parseISO(e.meeting_date!);
               const status = meetingStatus(e.meeting_date!);
               return (
                 <li
-                  key={e.id}
+                  key={`meeting-${e.id}`}
                   className="flex cursor-pointer items-center gap-4 p-5 transition-colors hover:bg-muted/60"
                   onClick={() => setSelectedDateKey(e.meeting_date!.slice(0, 10))}
                 >
@@ -296,29 +358,89 @@ function EventsPage() {
                 </li>
               );
             })}
+            {upcomingEditorEvents.map((e) => {
+              const date = parseISO(e.event_date!);
+              return (
+                <li
+                  key={`editor-event-${e.id}`}
+                  className="flex cursor-pointer items-center gap-4 p-5 transition-colors hover:bg-muted/60"
+                  onClick={() => setSelectedDateKey(e.event_date!.slice(0, 10))}
+                >
+                  <span className="flex size-14 flex-none flex-col items-center justify-center rounded-xl bg-pink-50">
+                    <span className="font-[family-name:var(--font-display)] text-lg font-bold text-pink-600">
+                      {format(date, "d")}
+                    </span>
+                    <span className="text-[11px] font-semibold uppercase text-pink-500">
+                      {format(date, "MMM")}
+                    </span>
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-2">
+                      <h4 className="text-[15.5px]">{e.title}</h4>
+                      <span className="size-2 flex-none rounded-full bg-pink-500" />
+                    </span>
+                    <p className="truncate text-sm text-muted-foreground">
+                      {formatTime(e.start_time)} · {e.venue || CLUB.venue}
+                    </p>
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         </div>
       </div>
 
       {/* Day detail dialog — shown on clicking (or, via title attr, hovering)
-          a highlighted calendar day. Pulls straight from the meetings the
-          admin has marked "Public". */}
+          a highlighted calendar day. Pulls from the meetings the admin/
+          secretary has marked "Public" and any events an editor has posted
+          for that day. */}
       <Dialog open={selectedDateKey !== null} onOpenChange={(open) => !open && setSelectedDateKey(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{selectedDateLabel}</DialogTitle>
             <DialogDescription>
-              {selectedMeetings.length > 1
-                ? `${selectedMeetings.length} activities scheduled`
+              {selectedCount > 1
+                ? `${selectedCount} activities scheduled`
                 : "Activity scheduled for this day"}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
+            {selectedEditorEvents.map((e) => (
+              <div key={`editor-event-${e.id}`} className="rounded-xl border border-pink-200 bg-pink-50/50 p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <h4 className="text-base font-semibold text-foreground">{e.title}</h4>
+                  <Badge className="border-transparent bg-pink-500 text-white">
+                    <Sparkles className="mr-1 h-3 w-3" /> Club event
+                  </Badge>
+                </div>
+
+                <div className="mt-3 space-y-1.5 text-sm text-muted-foreground">
+                  {(e.start_time || e.end_time) && (
+                    <p className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 flex-none" />
+                      {formatTime(e.start_time)}
+                      {e.end_time ? ` – ${formatTime(e.end_time)}` : ""}
+                    </p>
+                  )}
+                  {e.venue && (
+                    <p className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 flex-none" />
+                      {e.venue}
+                    </p>
+                  )}
+                </div>
+
+                {e.description && (
+                  <p className="mt-3 text-sm text-foreground">{e.description}</p>
+                )}
+              </div>
+            ))}
+
             {selectedMeetings.map((m) => {
               const status = meetingStatus(m.meeting_date!);
               return (
-                <div key={m.id} className="rounded-xl border border-border p-4">
+                <div key={`meeting-${m.id}`} className="rounded-xl border border-border p-4">
                   <div className="flex items-start justify-between gap-2">
                     <h4 className="text-base font-semibold text-foreground">{m.title}</h4>
                     <Badge
