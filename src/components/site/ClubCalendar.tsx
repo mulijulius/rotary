@@ -11,7 +11,7 @@ import {
   startOfMonth,
   subMonths,
 } from "date-fns";
-import { ChevronLeft, ChevronRight, Clock, MapPin, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, MapPin, Users, Sparkles } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +27,12 @@ import {
 // Same calendar UX as the public /events page, but pulling from the full
 // `meetings` table (any signed-in role can read all meetings, not just the
 // ones marked public) so back-office users see everything on the books.
+//
+// Also pulls from `editor_events` directly (not the public view) so an
+// Editor/Admin viewing their own dashboard sees their posted events too —
+// RLS on editor_events restricts that SELECT to admin/editor, so other
+// roles (secretary, treasurer, member) simply get an empty result back for
+// that query and just see meetings, same as before this was added.
 type CalendarMeeting = {
   id: number;
   title: string;
@@ -39,7 +45,19 @@ type CalendarMeeting = {
   is_mandatory: boolean;
 };
 
+type CalendarEditorEvent = {
+  id: number;
+  title: string;
+  event_date: string;
+  start_time: string | null;
+  end_time: string | null;
+  venue: string | null;
+  description: string | null;
+  is_public: boolean;
+};
+
 type MeetingStatus = "past" | "soon" | "upcoming";
+type DayStatus = MeetingStatus | "editorEvent";
 
 const SOON_THRESHOLD_DAYS = 3;
 
@@ -51,16 +69,18 @@ const MEETING_TYPE_LABELS: Record<string, string> = {
   fellowship: "Fellowship",
 };
 
-const STATUS_STYLES: Record<MeetingStatus, string> = {
+const STATUS_STYLES: Record<DayStatus, string> = {
   upcoming: "bg-emerald-600 text-white hover:bg-emerald-700",
   soon: "bg-amber-500 text-white hover:bg-amber-600",
   past: "bg-rose-600/90 text-white hover:bg-rose-700",
+  editorEvent: "bg-pink-500 text-white hover:bg-pink-600",
 };
 
-const STATUS_LABELS: Record<MeetingStatus, string> = {
+const STATUS_LABELS: Record<DayStatus, string> = {
   upcoming: "Upcoming",
   soon: "Coming up soon",
   past: "Past",
+  editorEvent: "Club event",
 };
 
 function meetingStatus(meetingDate: string): MeetingStatus {
@@ -85,6 +105,7 @@ function meetingTypeLabel(type: string): string {
 
 export function ClubCalendar() {
   const [meetings, setMeetings] = useState<CalendarMeeting[] | null>(null);
+  const [editorEvents, setEditorEvents] = useState<CalendarEditorEvent[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [monthCursor, setMonthCursor] = useState(() => startOfMonth(new Date()));
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
@@ -93,20 +114,35 @@ export function ClubCalendar() {
     let cancelled = false;
 
     async function load() {
-      const { data, error } = await supabase
-        .from("meetings")
-        .select("id, title, meeting_type, meeting_date, start_time, end_time, venue, description, is_mandatory")
-        .order("meeting_date", { ascending: true });
+      const [meetingsRes, editorEventsRes] = await Promise.all([
+        supabase
+          .from("meetings")
+          .select("id, title, meeting_type, meeting_date, start_time, end_time, venue, description, is_mandatory")
+          .order("meeting_date", { ascending: true }),
+        supabase
+          .from("editor_events")
+          .select("id, title, event_date, start_time, end_time, venue, description, is_public")
+          .order("event_date", { ascending: true }),
+      ]);
 
       if (cancelled) return;
 
-      if (error) {
-        console.error("[ClubCalendar] failed to load meetings", error);
+      if (meetingsRes.error) {
+        console.error("[ClubCalendar] failed to load meetings", meetingsRes.error);
         setLoadError("Couldn't load the calendar right now.");
         setMeetings([]);
-        return;
+      } else {
+        setMeetings(meetingsRes.data ?? []);
       }
-      setMeetings(data ?? []);
+
+      if (editorEventsRes.error) {
+        // Non-admin/editor roles get filtered to zero rows by RLS rather
+        // than an error, but log defensively in case something else fails.
+        console.error("[ClubCalendar] failed to load editor events", editorEventsRes.error);
+        setEditorEvents([]);
+      } else {
+        setEditorEvents(editorEventsRes.data ?? []);
+      }
     }
 
     load();
@@ -127,6 +163,18 @@ export function ClubCalendar() {
     return map;
   }, [meetings]);
 
+  const editorEventsByDate = useMemo(() => {
+    const map = new Map<string, CalendarEditorEvent[]>();
+    for (const e of editorEvents ?? []) {
+      if (!e.event_date) continue;
+      const key = e.event_date.slice(0, 10);
+      const existing = map.get(key);
+      if (existing) existing.push(e);
+      else map.set(key, [e]);
+    }
+    return map;
+  }, [editorEvents]);
+
   const monthStart = startOfMonth(monthCursor);
   const monthEnd = endOfMonth(monthCursor);
   const leadingBlanks = getDay(monthStart);
@@ -138,9 +186,11 @@ export function ClubCalendar() {
   ];
 
   const selectedMeetings = selectedDateKey ? (meetingsByDate.get(selectedDateKey) ?? []) : [];
+  const selectedEditorEvents = selectedDateKey ? (editorEventsByDate.get(selectedDateKey) ?? []) : [];
   const selectedDateLabel = selectedDateKey
     ? format(parseISO(selectedDateKey), "EEEE, MMMM d, yyyy")
     : "";
+  const selectedCount = selectedMeetings.length + selectedEditorEvents.length;
 
   return (
     <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-card)]">
@@ -181,19 +231,32 @@ export function ClubCalendar() {
           if (!cell) return <span key={`blank-${i}`} />;
 
           const dayMeetings = meetingsByDate.get(cell.key) ?? [];
+          const dayEditorEvents = editorEventsByDate.get(cell.key) ?? [];
+          const hasEditorEvent = dayEditorEvents.length > 0;
           const hasMeeting = dayMeetings.length > 0;
-          const status = hasMeeting ? meetingStatus(dayMeetings[0].meeting_date) : null;
-          const titleText = hasMeeting ? dayMeetings.map((m) => m.title).join(", ") : undefined;
+          const hasAny = hasMeeting || hasEditorEvent;
+
+          // Editor-posted events win the pink highlight, same rule as the
+          // public /events page — the dialog below still lists both.
+          const status: DayStatus | null = hasEditorEvent
+            ? "editorEvent"
+            : hasMeeting
+              ? meetingStatus(dayMeetings[0].meeting_date)
+              : null;
+
+          const titleText = hasAny
+            ? [...dayMeetings.map((m) => m.title), ...dayEditorEvents.map((e) => e.title)].join(", ")
+            : undefined;
 
           return (
             <button
               key={cell.key}
               type="button"
-              disabled={!hasMeeting}
+              disabled={!hasAny}
               title={titleText}
-              onClick={() => hasMeeting && setSelectedDateKey(cell.key)}
+              onClick={() => hasAny && setSelectedDateKey(cell.key)}
               className={`flex aspect-square items-center justify-center rounded-lg text-sm font-medium transition-colors ${
-                hasMeeting
+                hasAny
                   ? `cursor-pointer ${STATUS_STYLES[status!]}`
                   : "cursor-default bg-muted text-foreground"
               } ${isTodayFn(cell.date) ? "ring-2 ring-offset-1 ring-navy" : ""}`}
@@ -214,27 +277,66 @@ export function ClubCalendar() {
         <span className="flex items-center gap-1.5">
           <span className="size-2.5 rounded-full bg-rose-600/90" /> Past
         </span>
+        <span className="flex items-center gap-1.5">
+          <span className="size-2.5 rounded-full bg-pink-500" /> Club event (editor)
+        </span>
       </div>
 
       {loadError && <p className="mt-3 text-sm text-destructive">{loadError}</p>}
-      {meetings === null && <p className="mt-3 text-sm text-muted-foreground">Loading calendar…</p>}
+      {meetings === null && editorEvents === null && (
+        <p className="mt-3 text-sm text-muted-foreground">Loading calendar…</p>
+      )}
 
       <Dialog open={selectedDateKey !== null} onOpenChange={(open) => !open && setSelectedDateKey(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{selectedDateLabel}</DialogTitle>
             <DialogDescription>
-              {selectedMeetings.length > 1
-                ? `${selectedMeetings.length} activities scheduled`
+              {selectedCount > 1
+                ? `${selectedCount} activities scheduled`
                 : "Activity scheduled for this day"}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
+            {selectedEditorEvents.map((e) => (
+              <div key={`editor-event-${e.id}`} className="rounded-xl border border-pink-200 bg-pink-50/50 p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <h4 className="text-base font-semibold text-foreground">{e.title}</h4>
+                  <Badge className="border-transparent bg-pink-500 text-white">
+                    <Sparkles className="mr-1 h-3 w-3" /> Club event
+                  </Badge>
+                </div>
+
+                <div className="mt-3 space-y-1.5 text-sm text-muted-foreground">
+                  {(e.start_time || e.end_time) && (
+                    <p className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 flex-none" />
+                      {formatTime(e.start_time)}
+                      {e.end_time ? ` – ${formatTime(e.end_time)}` : ""}
+                    </p>
+                  )}
+                  {e.venue && (
+                    <p className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 flex-none" />
+                      {e.venue}
+                    </p>
+                  )}
+                  {!e.is_public && (
+                    <p className="text-xs italic text-muted-foreground">
+                      Hidden from the public calendar (not marked public).
+                    </p>
+                  )}
+                </div>
+
+                {e.description && <p className="mt-3 text-sm text-foreground">{e.description}</p>}
+              </div>
+            ))}
+
             {selectedMeetings.map((m) => {
               const status = meetingStatus(m.meeting_date);
               return (
-                <div key={m.id} className="rounded-xl border border-border p-4">
+                <div key={`meeting-${m.id}`} className="rounded-xl border border-border p-4">
                   <div className="flex items-start justify-between gap-2">
                     <h4 className="text-base font-semibold text-foreground">{m.title}</h4>
                     <Badge className={`${STATUS_STYLES[status].split(" ")[0]} border-transparent text-white`}>
