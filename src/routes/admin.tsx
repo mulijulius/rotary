@@ -27,6 +27,8 @@ const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
     { to: "/admin/meetings", label: "Meetings" },
     { to: "/admin/events", label: "Events" },
     { to: "/admin/board-positions", label: "Board Positions" },
+    { to: "/admin/minutes", label: "Minutes" },
+    { to: "/admin/club-documents", label: "Club Documents" },
     // Accounting Module
     { to: "/admin/fiscal-years", label: "Fiscal Years" },
     { to: "/admin/funds", label: "Funds" },
@@ -59,6 +61,7 @@ const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
     { to: "/admin/inventory", label: "Inventory" },
     { to: "/admin/product-orders", label: "Product Orders" },
     { to: "/admin/members", label: "Members" },
+    { to: "/admin/club-documents", label: "Club Documents" },
     { to: "/admin/messages", label: "Messages" },
   ],
   secretary: [
@@ -69,6 +72,8 @@ const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
     { to: "/admin/visitors", label: "Visitors" },
     { to: "/admin/meetings", label: "Meetings" },
     { to: "/admin/board-positions", label: "Board Positions" },
+    { to: "/admin/minutes", label: "Minutes" },
+    { to: "/admin/club-documents", label: "Club Documents" },
     { to: "/admin/email-campaigns", label: "Email Campaigns" },
     { to: "/admin/messages", label: "Messages" },
   ],
@@ -80,6 +85,7 @@ const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
     { to: "/admin/news", label: "News Articles" },
     { to: "/admin/events", label: "Events" },
     { to: "/admin/gallery", label: "Gallery" },
+    { to: "/admin/club-documents", label: "Club Documents" },
     { to: "/admin/messages", label: "Messages" },
   ],
   member: [
@@ -87,6 +93,7 @@ const NAV_BY_ROLE: Record<AppRole, NavItem[]> = {
     { to: "/admin/profile", label: "My Profile" },
     { to: "/admin/scan", label: "Scan Attendance" },
     { to: "/admin/shop", label: "Shop" },
+    { to: "/admin/club-documents", label: "Club Documents" },
   ],
 };
 
