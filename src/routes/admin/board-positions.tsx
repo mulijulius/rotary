@@ -8,10 +8,10 @@ import { useAuth } from "@/lib/auth";
 import {
   fetchBoardPositionDocuments,
   addBoardPositionDocument,
-  deleteBoardPositionDocument,
+  deleteClubDocument,
   getClubDocumentUrl,
   formatFileSize,
-  type BoardPositionDocument,
+  type ClubDocument,
 } from "@/lib/club-documents";
 import type { Database } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
@@ -67,7 +67,7 @@ function AdminBoardPositions() {
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const [docsPosition, setDocsPosition] = useState<(BoardPosition & { member_name: string }) | null>(null);
-  const [docs, setDocs] = useState<BoardPositionDocument[] | null>(null);
+  const [docs, setDocs] = useState<ClubDocument[] | null>(null);
   const [docTitle, setDocTitle] = useState("");
   const [docFile, setDocFile] = useState<File | null>(null);
   const [uploadingDoc, setUploadingDoc] = useState(false);
@@ -280,7 +280,7 @@ function AdminBoardPositions() {
     }
   }
 
-  async function handleViewDoc(doc: BoardPositionDocument) {
+  async function handleViewDoc(doc: ClubDocument) {
     setDocBusyId(doc.id);
     try {
       const url = await getClubDocumentUrl(doc.file_path);
@@ -293,11 +293,11 @@ function AdminBoardPositions() {
     }
   }
 
-  async function handleDeleteDoc(doc: BoardPositionDocument) {
+  async function handleDeleteDoc(doc: ClubDocument) {
     if (!confirm(`Delete "${doc.title}"? This cannot be undone.`)) return;
     setDocBusyId(doc.id);
     try {
-      await deleteBoardPositionDocument(doc);
+      await deleteClubDocument(doc);
       setDocs((prev) => (prev || []).filter((d) => d.id !== doc.id));
       toast.success("Document deleted.");
     } catch (err) {
