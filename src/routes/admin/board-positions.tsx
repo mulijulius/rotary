@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useUnsavedFormGuard } from "@/lib/unsaved-form-tracker";
 import {
   fetchBoardPositionDocuments,
   addBoardPositionDocument,
@@ -71,6 +72,8 @@ function AdminBoardPositions() {
   const [docTitle, setDocTitle] = useState("");
   const [docFile, setDocFile] = useState<File | null>(null);
   const [uploadingDoc, setUploadingDoc] = useState(false);
+
+  useUnsavedFormGuard(Boolean(docTitle.trim() || docFile));
   const [docBusyId, setDocBusyId] = useState<number | null>(null);
 
   useEffect(() => {
