@@ -4,6 +4,7 @@ import { FileText, Upload, Download, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { useAuth, isOfficerRole } from "@/lib/auth";
+import { useUnsavedFormGuard } from "@/lib/unsaved-form-tracker";
 import {
   fetchClubDocuments,
   addClubDocument,
@@ -52,6 +53,8 @@ function AdminClubDocuments() {
   const [docCategory, setDocCategory] = useState<ClubDocumentCategory>("general");
   const [docFile, setDocFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+
+  useUnsavedFormGuard(Boolean(docTitle.trim() || docFile));
 
   useEffect(() => {
     load();
