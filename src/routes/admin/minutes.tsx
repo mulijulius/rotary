@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useUnsavedFormGuard } from "@/lib/unsaved-form-tracker";
 import {
   fetchClubDocuments,
   addClubDocument,
@@ -51,6 +52,8 @@ function AdminMinutes() {
   const [meetingDate, setMeetingDate] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+
+  useUnsavedFormGuard(Boolean(title.trim() || file));
 
   useEffect(() => {
     loadYears();
