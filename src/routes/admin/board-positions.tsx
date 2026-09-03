@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Plus, Edit2, Trash2, FileText, Upload, Download, X } from "lucide-react";
+import { Plus, Edit2, Trash2, FileText, Upload, Download, X, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useUnsavedFormGuard } from "@/lib/unsaved-form-tracker";
+import { loadDraft, saveDraft, clearDraft } from "@/lib/persisted-draft";
 import {
   fetchBoardPositionDocuments,
   addBoardPositionDocument,
@@ -50,6 +51,17 @@ type BoardPosition = Database["public"]["Tables"]["board_positions"]["Row"];
 type FiscalYear = Database["public"]["Tables"]["fiscal_years"]["Row"];
 type Member = Database["public"]["Tables"]["members"]["Row"];
 
+// Keyed per-position so a restored draft only ever reappears in the same
+// position's Documents dialog it was typed into.
+function docDraftKey(positionId: number): string {
+  return `admin-board-position-doc-${positionId}`;
+}
+
+type BoardPositionDocDraft = {
+  docTitle: string;
+  hadFile: boolean;
+};
+
 function AdminBoardPositions() {
   const { role, session } = useAuth();
   const [positions, setPositions] = useState<(BoardPosition & { fiscal_year_name: string; member_name: string })[] | null>(null);
@@ -72,9 +84,29 @@ function AdminBoardPositions() {
   const [docTitle, setDocTitle] = useState("");
   const [docFile, setDocFile] = useState<File | null>(null);
   const [uploadingDoc, setUploadingDoc] = useState(false);
+  // True right after a draft was restored but the file itself — which
+  // can't survive a mobile tab discard/reload (see
+  // src/lib/persisted-draft.ts) — hasn't been reattached yet.
+  const [restoredFilePending, setRestoredFilePending] = useState(false);
 
   useUnsavedFormGuard(Boolean(docTitle.trim() || docFile));
   const [docBusyId, setDocBusyId] = useState<number | null>(null);
+
+  // Keep the draft saved as the user fills the dialog in, keyed to the
+  // open position so it only restores into the same position's dialog.
+  useEffect(() => {
+    if (!docsPosition) return;
+    const key = docDraftKey(docsPosition.id);
+    if (!docTitle.trim() && !docFile && !restoredFilePending) {
+      clearDraft(key);
+      return;
+    }
+    saveDraft<BoardPositionDocDraft>(key, {
+      docTitle,
+      hadFile: Boolean(docFile) || restoredFilePending,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [docsPosition, docTitle, docFile, restoredFilePending]);
 
   useEffect(() => {
     loadYears();
@@ -225,18 +257,33 @@ function AdminBoardPositions() {
   }
 
   function handleOpenDocsDialog(position: BoardPosition & { member_name: string }) {
+    // Restore any in-progress draft for this position — see
+    // src/lib/persisted-draft.ts: opening the native file picker on
+    // mobile can get this dialog's whole page reloaded from scratch by
+    // the browser before the upload finishes, which would otherwise
+    // silently wipe the title and lose track of the file.
+    const draft = loadDraft<BoardPositionDocDraft>(docDraftKey(position.id));
     setDocsPosition(position);
-    setDocTitle("");
+    setDocTitle(draft?.docTitle ?? "");
     setDocFile(null);
+    setRestoredFilePending(Boolean(draft?.hadFile));
+    if (draft?.hadFile) {
+      toast.message("Your form was restored, but the file needs reattaching.", {
+        description: "The browser reloaded this page in the background — pick the file again before uploading.",
+        duration: 10000,
+      });
+    }
     setDocs(null);
     loadDocs(position.id);
   }
 
   function handleCloseDocsDialog() {
+    if (docsPosition) clearDraft(docDraftKey(docsPosition.id));
     setDocsPosition(null);
     setDocs(null);
     setDocTitle("");
     setDocFile(null);
+    setRestoredFilePending(false);
   }
 
   async function loadDocs(boardPositionId: number) {
@@ -256,6 +303,9 @@ function AdminBoardPositions() {
       return;
     }
     setDocFile(file);
+    // A real file was (re)attached, so the "needs reattaching" notice no
+    // longer applies.
+    if (file) setRestoredFilePending(false);
   }
 
   async function handleUploadDoc() {
@@ -272,8 +322,10 @@ function AdminBoardPositions() {
     try {
       const doc = await addBoardPositionDocument(docsPosition.id, docFile, docTitle.trim(), session?.user.id ?? null);
       setDocs((prev) => [doc, ...(prev || [])]);
+      clearDraft(docDraftKey(docsPosition.id));
       setDocTitle("");
       setDocFile(null);
+      setRestoredFilePending(false);
       toast.success("Document uploaded.");
     } catch (err) {
       console.error("[admin/board-positions] document upload error", err);
@@ -532,15 +584,24 @@ function AdminBoardPositions() {
                     </button>
                   </div>
                 ) : (
-                  <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground hover:border-primary hover:text-foreground transition-colors">
-                    <Upload className="h-4 w-4" />
-                    Choose a file
-                    <input
-                      type="file"
-                      className="hidden"
-                      onChange={(e) => handleDocFileChange(e.target.files?.[0] || null)}
-                    />
-                  </label>
+                  <div className="space-y-1.5">
+                    {restoredFilePending && (
+                      <p className="flex items-center gap-1.5 text-xs font-medium text-amber-600">
+                        <RotateCcw className="h-3.5 w-3.5 shrink-0" />
+                        Your title was restored, but the file wasn't — your browser reloaded this tab in the
+                        background. Please choose the file again.
+                      </p>
+                    )}
+                    <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground hover:border-primary hover:text-foreground transition-colors">
+                      <Upload className="h-4 w-4" />
+                      Choose a file
+                      <input
+                        type="file"
+                        className="hidden"
+                        onChange={(e) => handleDocFileChange(e.target.files?.[0] || null)}
+                      />
+                    </label>
+                  </div>
                 )}
                 <Button onClick={handleUploadDoc} disabled={uploadingDoc} size="sm" className="w-full gap-2">
                   <Upload className="h-3.5 w-3.5" />
