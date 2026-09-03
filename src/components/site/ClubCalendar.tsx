@@ -28,11 +28,10 @@ import {
 // `meetings` table (any signed-in role can read all meetings, not just the
 // ones marked public) so back-office users see everything on the books.
 //
-// Also pulls from `editor_events` directly (not the public view) so an
-// Editor/Admin viewing their own dashboard sees their posted events too —
-// RLS on editor_events restricts that SELECT to admin/editor, so other
-// roles (secretary, treasurer, member) simply get an empty result back for
-// that query and just see meetings, same as before this was added.
+// Also pulls from `editor_events` directly (not the public view) so every
+// signed-in role viewing their Overview page sees posted club events too —
+// RLS on editor_events (see migration 20260902_026) allows SELECT to any
+// authenticated role; only INSERT/UPDATE/DELETE stay scoped to admin/editor.
 type CalendarMeeting = {
   id: number;
   title: string;
@@ -81,6 +80,18 @@ const STATUS_LABELS: Record<DayStatus, string> = {
   soon: "Coming up soon",
   past: "Past",
   editorEvent: "Club event",
+};
+
+// Hex equivalents of the classes above, for days where a meeting *and* an
+// editor event land on the same date. Those days render as a diagonal
+// split (half pink for the event, half whatever the meeting's own status
+// color is) instead of letting one type silently hide the other — a past
+// meeting clashing with an event still shows rose on its half, not green.
+const STATUS_HEX: Record<DayStatus, string> = {
+  upcoming: "#059669",
+  soon: "#f59e0b",
+  past: "#e11d48",
+  editorEvent: "#ec4899",
 };
 
 function meetingStatus(meetingDate: string): MeetingStatus {
@@ -136,8 +147,6 @@ export function ClubCalendar() {
       }
 
       if (editorEventsRes.error) {
-        // Non-admin/editor roles get filtered to zero rows by RLS rather
-        // than an error, but log defensively in case something else fails.
         console.error("[ClubCalendar] failed to load editor events", editorEventsRes.error);
         setEditorEvents([]);
       } else {
@@ -236,13 +245,34 @@ export function ClubCalendar() {
           const hasMeeting = dayMeetings.length > 0;
           const hasAny = hasMeeting || hasEditorEvent;
 
-          // Editor-posted events win the pink highlight, same rule as the
-          // public /events page — the dialog below still lists both.
-          const status: DayStatus | null = hasEditorEvent
-            ? "editorEvent"
-            : hasMeeting
-              ? meetingStatus(dayMeetings[0].meeting_date)
-              : null;
+          // A meeting's own status (upcoming/soon/past) reflects whether
+          // it's actually overdue — used both standalone and as the
+          // non-pink half of a clash day below.
+          const meetingSideStatus: MeetingStatus | null = hasMeeting
+            ? meetingStatus(dayMeetings[0].meeting_date)
+            : null;
+
+          // Clash day: an editor event and a meeting on the same date.
+          // Split the cell diagonally instead of letting one type hide
+          // the other — pink stays pink for the event half, the other
+          // half uses whatever color the meeting's date actually earns
+          // (rose if it's overdue, amber if it's almost due, green
+          // otherwise), same as it would render on its own.
+          const hasClash = hasEditorEvent && hasMeeting;
+
+          const status: DayStatus | null = hasClash
+            ? null
+            : hasEditorEvent
+              ? "editorEvent"
+              : hasMeeting
+                ? meetingSideStatus
+                : null;
+
+          const clashStyle = hasClash
+            ? {
+                backgroundImage: `linear-gradient(135deg, ${STATUS_HEX.editorEvent} 50%, ${STATUS_HEX[meetingSideStatus!]} 50%)`,
+              }
+            : undefined;
 
           const titleText = hasAny
             ? [...dayMeetings.map((m) => m.title), ...dayEditorEvents.map((e) => e.title)].join(", ")
@@ -255,10 +285,13 @@ export function ClubCalendar() {
               disabled={!hasAny}
               title={titleText}
               onClick={() => hasAny && setSelectedDateKey(cell.key)}
+              style={clashStyle}
               className={`flex aspect-square items-center justify-center rounded-lg text-sm font-medium transition-colors ${
-                hasAny
-                  ? `cursor-pointer ${STATUS_STYLES[status!]}`
-                  : "cursor-default bg-muted text-foreground"
+                hasClash
+                  ? "cursor-pointer text-white hover:brightness-110"
+                  : hasAny
+                    ? `cursor-pointer ${STATUS_STYLES[status!]}`
+                    : "cursor-default bg-muted text-foreground"
               } ${isTodayFn(cell.date) ? "ring-2 ring-offset-1 ring-navy" : ""}`}
             >
               {format(cell.date, "d")}
@@ -279,6 +312,13 @@ export function ClubCalendar() {
         </span>
         <span className="flex items-center gap-1.5">
           <span className="size-2.5 rounded-full bg-pink-500" /> Club event (editor)
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span
+            className="size-2.5 rounded-full"
+            style={{ backgroundImage: `linear-gradient(135deg, ${STATUS_HEX.editorEvent} 50%, ${STATUS_HEX.upcoming} 50%)` }}
+          />
+          Event + meeting same day
         </span>
       </div>
 
