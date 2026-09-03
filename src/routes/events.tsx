@@ -83,6 +83,17 @@ const STATUS_LABELS: Record<DayStatus, string> = {
   editorEvent: "Club event",
 };
 
+// Hex equivalents of the classes above, used for the diagonal split shown
+// on a day where a meeting and an editor event both land — half pink for
+// the event, half whatever color the meeting's own date status earns
+// (rose if overdue, amber if almost due, green otherwise).
+const STATUS_HEX: Record<DayStatus, string> = {
+  upcoming: "#059669",
+  soon: "#f59e0b",
+  past: "#e11d48",
+  editorEvent: "#ec4899",
+};
+
 function meetingStatus(meetingDate: string): MeetingStatus {
   const diff = differenceInCalendarDays(parseISO(meetingDate), new Date());
   if (diff < 0) return "past";
@@ -261,14 +272,31 @@ function EventsPage() {
                 const hasMeeting = dayMeetings.length > 0;
                 const hasAny = hasMeeting || hasEditorEvent;
 
-                // Editor-posted events always win the pink highlight for the
-                // day, even if a meeting also falls on the same date — the
-                // day-detail dialog below still lists both.
-                const status: DayStatus | null = hasEditorEvent
-                  ? "editorEvent"
-                  : hasMeeting
-                    ? meetingStatus(dayMeetings[0].meeting_date!)
-                    : null;
+                const meetingSideStatus: MeetingStatus | null = hasMeeting
+                  ? meetingStatus(dayMeetings[0].meeting_date!)
+                  : null;
+
+                // Clash day: a meeting and an editor event on the same
+                // date. Split the cell diagonally instead of letting the
+                // event hide the meeting — pink stays pink, the other half
+                // uses whatever status color the meeting's date earns on
+                // its own (rose if overdue, amber if almost due, green
+                // otherwise).
+                const hasClash = hasEditorEvent && hasMeeting;
+
+                const status: DayStatus | null = hasClash
+                  ? null
+                  : hasEditorEvent
+                    ? "editorEvent"
+                    : hasMeeting
+                      ? meetingSideStatus
+                      : null;
+
+                const clashStyle = hasClash
+                  ? {
+                      backgroundImage: `linear-gradient(135deg, ${STATUS_HEX.editorEvent} 50%, ${STATUS_HEX[meetingSideStatus!]} 50%)`,
+                    }
+                  : undefined;
 
                 const titleText = hasAny
                   ? [...dayMeetings.map((m) => m.title), ...dayEditorEvents.map((e) => e.title)].join(
@@ -283,10 +311,13 @@ function EventsPage() {
                     disabled={!hasAny}
                     title={titleText}
                     onClick={() => hasAny && setSelectedDateKey(cell.key)}
+                    style={clashStyle}
                     className={`flex aspect-square items-center justify-center rounded-lg text-sm font-medium transition-colors ${
-                      hasAny
-                        ? `cursor-pointer ${STATUS_STYLES[status!]}`
-                        : "cursor-default bg-muted text-foreground"
+                      hasClash
+                        ? "cursor-pointer text-white hover:brightness-110"
+                        : hasAny
+                          ? `cursor-pointer ${STATUS_STYLES[status!]}`
+                          : "cursor-default bg-muted text-foreground"
                     } ${isTodayFn(cell.date) ? "ring-2 ring-offset-1 ring-navy" : ""}`}
                   >
                     {format(cell.date, "d")}
@@ -307,6 +338,13 @@ function EventsPage() {
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="size-2.5 rounded-full bg-pink-500" /> Club event (editor)
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span
+                  className="size-2.5 rounded-full"
+                  style={{ backgroundImage: `linear-gradient(135deg, ${STATUS_HEX.editorEvent} 50%, ${STATUS_HEX.upcoming} 50%)` }}
+                />
+                Event + meeting same day
               </span>
             </div>
 
