@@ -1,3 +1,4 @@
+
 // Tracks whether any form on the page currently holds input the user
 // hasn't saved yet (a chosen file, a typed title, etc).
 //
@@ -18,7 +19,7 @@
 // `onAllFormsClean()` to reload as soon as the user finishes (submits,
 // clears the file, or navigates away).
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 let dirtyCount = 0;
 const listeners = new Set<() => void>();
@@ -54,11 +55,33 @@ export function onAllFormsClean(callback: () => void): () => void {
 // Call with `true` for as long as a form has unsaved input (e.g. a
 // non-empty title or a chosen-but-not-yet-uploaded file), `false`
 // otherwise. Safe to call every render — only transitions matter.
+//
+// Registers synchronously during render (not in a useEffect) so there's
+// no gap between paint and commit where a reload could sneak past a form
+// that visibly has unsaved input on screen — e.g. a title restored from
+// a persisted draft is dirty from the very first render, before any
+// effect has had a chance to run.
 export function useUnsavedFormGuard(isDirty: boolean): void {
-  useEffect(() => {
-    if (!isDirty) return;
+  const wasDirtyRef = useRef(false);
+
+  if (isDirty && !wasDirtyRef.current) {
+    wasDirtyRef.current = true;
     markFormDirty();
-    return () => clearFormDirty();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDirty]);
+  } else if (!isDirty && wasDirtyRef.current) {
+    wasDirtyRef.current = false;
+    clearFormDirty();
+  }
+
+  // Cleanup still needs an effect — this only runs on unmount, mirroring
+  // the previous effect-cleanup behavior, so a form removed from the page
+  // (e.g. navigating away) while still dirty doesn't leak a permanently
+  // stuck dirtyCount.
+  useEffect(() => {
+    return () => {
+      if (wasDirtyRef.current) {
+        wasDirtyRef.current = false;
+        clearFormDirty();
+      }
+    };
+  }, []);
 }
