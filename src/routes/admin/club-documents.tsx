@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { FileText, Upload, Download, Trash2, X } from "lucide-react";
+import { FileText, Upload, Download, Trash2, X, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 import { useAuth, isOfficerRole } from "@/lib/auth";
 import { useUnsavedFormGuard } from "@/lib/unsaved-form-tracker";
+import { loadDraft, saveDraft, clearDraft } from "@/lib/persisted-draft";
 import {
   fetchClubDocuments,
   addClubDocument,
@@ -41,6 +42,14 @@ export const Route = createFileRoute("/admin/club-documents")({
 const CATEGORY_FILTERS: { value: string; label: string } = { value: "all", label: "All documents" };
 const CATEGORIES: ClubDocumentCategory[] = ["general", "minutes", "handover", "financial", "other"];
 
+const DRAFT_KEY = "admin-club-documents";
+
+type ClubDocumentDraft = {
+  docTitle: string;
+  docCategory: ClubDocumentCategory;
+  hadFile: boolean;
+};
+
 function AdminClubDocuments() {
   const { role, session } = useAuth();
   const canUpload = isOfficerRole(role ?? null);
@@ -49,15 +58,48 @@ function AdminClubDocuments() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [busyId, setBusyId] = useState<number | null>(null);
 
-  const [docTitle, setDocTitle] = useState("");
-  const [docCategory, setDocCategory] = useState<ClubDocumentCategory>("general");
+  // Restored synchronously on first render — see src/lib/persisted-draft.ts
+  // for why this exists: opening the native file picker on mobile
+  // backgrounds the tab, and under memory pressure the browser can kill
+  // that tab's process outright. Returning triggers a full page reload
+  // (not a client-side navigation), which wipes all in-memory React state
+  // with no error shown. This restores the text fields that reload would
+  // otherwise silently destroy.
+  const initialDraft = loadDraft<ClubDocumentDraft>(DRAFT_KEY);
+  const [docTitle, setDocTitle] = useState(initialDraft?.docTitle ?? "");
+  const [docCategory, setDocCategory] = useState<ClubDocumentCategory>(initialDraft?.docCategory ?? "general");
   const [docFile, setDocFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  // True right after a draft was restored but the file itself — which
+  // can't survive a tab discard/reload — hasn't been reattached yet.
+  const [restoredFilePending, setRestoredFilePending] = useState(Boolean(initialDraft?.hadFile));
 
   useUnsavedFormGuard(Boolean(docTitle.trim() || docFile));
 
+  // Keep the lightweight, serializable parts of the draft saved as the
+  // user fills the form in, and clear it once there's nothing to lose.
+  useEffect(() => {
+    if (!docTitle.trim() && !docFile && !restoredFilePending) {
+      clearDraft(DRAFT_KEY);
+      return;
+    }
+    saveDraft<ClubDocumentDraft>(DRAFT_KEY, {
+      docTitle,
+      docCategory,
+      hadFile: Boolean(docFile) || restoredFilePending,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [docTitle, docCategory, docFile, restoredFilePending]);
+
   useEffect(() => {
     load();
+    if (initialDraft?.hadFile) {
+      toast.message("Your form was restored, but the file needs reattaching.", {
+        description: "The browser reloaded this page in the background — pick the file again before uploading.",
+        duration: 10000,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function load() {
@@ -83,6 +125,16 @@ function AdminClubDocuments() {
       return;
     }
     setDocFile(file);
+    // A real file was (re)attached, so the "needs reattaching" notice no
+    // longer applies.
+    if (file) setRestoredFilePending(false);
+  }
+
+  function resetForm() {
+    setDocTitle("");
+    setDocFile(null);
+    setRestoredFilePending(false);
+    clearDraft(DRAFT_KEY);
   }
 
   async function handleUpload() {
@@ -112,8 +164,7 @@ function AdminClubDocuments() {
         } as ClubDocumentWithContext,
         ...(prev || []),
       ]);
-      setDocTitle("");
-      setDocFile(null);
+      resetForm();
       toast.success("Document uploaded.");
     } catch (err) {
       console.error("[admin/club-documents] upload error", err);
@@ -209,11 +260,24 @@ function AdminClubDocuments() {
               </button>
             </div>
           ) : (
-            <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground hover:border-primary hover:text-foreground transition-colors">
-              <Upload className="h-4 w-4" />
-              Choose a file
-              <input type="file" className="hidden" onChange={(e) => handleFileChange(e.target.files?.[0] || null)} />
-            </label>
+            <div className="space-y-1.5">
+              {restoredFilePending && (
+                <p className="flex items-center gap-1.5 text-xs font-medium text-amber-600">
+                  <RotateCcw className="h-3.5 w-3.5 shrink-0" />
+                  Your title and category were restored, but the file wasn't — your browser reloaded this tab in
+                  the background. Please choose the file again.
+                </p>
+              )}
+              <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground hover:border-primary hover:text-foreground transition-colors">
+                <Upload className="h-4 w-4" />
+                Choose a file
+                <input
+                  type="file"
+                  className="hidden"
+                  onChange={(e) => handleFileChange(e.target.files?.[0] || null)}
+                />
+              </label>
+            </div>
           )}
           <Button onClick={handleUpload} disabled={uploading} size="sm" className="gap-2">
             <Upload className="h-3.5 w-3.5" />
