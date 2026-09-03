@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { FileText, Upload, Download, Trash2, X } from "lucide-react";
+import { FileText, Upload, Download, Trash2, X, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useUnsavedFormGuard } from "@/lib/unsaved-form-tracker";
+import { loadDraft, saveDraft, clearDraft } from "@/lib/persisted-draft";
 import {
   fetchClubDocuments,
   addClubDocument,
@@ -40,6 +41,15 @@ export const Route = createFileRoute("/admin/minutes")({
 
 type FiscalYear = Database["public"]["Tables"]["fiscal_years"]["Row"];
 
+const DRAFT_KEY = "admin-minutes";
+
+type MinutesDraft = {
+  title: string;
+  meetingDate: string;
+  selectedYear: string;
+  hadFile: boolean;
+};
+
 function AdminMinutes() {
   const { role, session } = useAuth();
 
@@ -48,16 +58,45 @@ function AdminMinutes() {
   const [minutes, setMinutes] = useState<ClubDocumentWithContext[] | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
 
-  const [title, setTitle] = useState("");
-  const [meetingDate, setMeetingDate] = useState("");
+  // Restored synchronously on first render so the draft is never
+  // momentarily blank before the effect below runs.
+  const initialDraft = loadDraft<MinutesDraft>(DRAFT_KEY);
+  const [title, setTitle] = useState(initialDraft?.title ?? "");
+  const [meetingDate, setMeetingDate] = useState(initialDraft?.meetingDate ?? "");
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  // True right after a draft was restored but the file itself — which
+  // can't survive a tab discard/reload — hasn't been reattached yet.
+  const [restoredFilePending, setRestoredFilePending] = useState(Boolean(initialDraft?.hadFile));
 
   useUnsavedFormGuard(Boolean(title.trim() || file));
+
+  // Keep the lightweight, serializable parts of the draft saved as the
+  // user fills the form in, and clear it once there's nothing to lose.
+  useEffect(() => {
+    if (!title.trim() && !meetingDate && !file && !restoredFilePending) {
+      clearDraft(DRAFT_KEY);
+      return;
+    }
+    saveDraft<MinutesDraft>(DRAFT_KEY, {
+      title,
+      meetingDate,
+      selectedYear,
+      hadFile: Boolean(file) || restoredFilePending,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [title, meetingDate, selectedYear, file, restoredFilePending]);
 
   useEffect(() => {
     loadYears();
     loadMinutes();
+    if (initialDraft?.hadFile) {
+      toast.message("Your form was restored, but the file needs reattaching.", {
+        description: "The browser reloaded this page in the background — pick the file again before uploading.",
+        duration: 10000,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function loadYears() {
@@ -67,7 +106,11 @@ function AdminMinutes() {
       return;
     }
     setYears(data);
-    if (data.length > 0) setSelectedYear(data[0]!.id.toString());
+    if (data.length > 0) {
+      const restored = initialDraft?.selectedYear;
+      const stillValid = restored && data.some((y) => y.id.toString() === restored);
+      setSelectedYear(stillValid ? restored! : data[0]!.id.toString());
+    }
   }
 
   async function loadMinutes() {
@@ -87,12 +130,17 @@ function AdminMinutes() {
       return;
     }
     setFile(f);
+    // A real file was (re)attached, so the "needs reattaching" notice no
+    // longer applies.
+    if (f) setRestoredFilePending(false);
   }
 
   function resetForm() {
     setTitle("");
     setMeetingDate("");
     setFile(null);
+    setRestoredFilePending(false);
+    clearDraft(DRAFT_KEY);
   }
 
   async function handleUpload() {
@@ -226,11 +274,24 @@ function AdminMinutes() {
             </button>
           </div>
         ) : (
-          <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground hover:border-primary hover:text-foreground transition-colors">
-            <Upload className="h-4 w-4" />
-            Choose a file
-            <input type="file" className="hidden" onChange={(e) => handleFileChange(e.target.files?.[0] || null)} />
-          </label>
+          <div className="space-y-1.5">
+            {restoredFilePending && (
+              <p className="flex items-center gap-1.5 text-xs font-medium text-amber-600">
+                <RotateCcw className="h-3.5 w-3.5 shrink-0" />
+                Your title and date were restored, but the file wasn't — your browser reloaded this tab in the
+                background. Please choose the file again.
+              </p>
+            )}
+            <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground hover:border-primary hover:text-foreground transition-colors">
+              <Upload className="h-4 w-4" />
+              Choose a file
+              <input
+                type="file"
+                className="hidden"
+                onChange={(e) => handleFileChange(e.target.files?.[0] || null)}
+              />
+            </label>
+          </div>
         )}
         <Button onClick={handleUpload} disabled={uploading} size="sm" className="gap-2">
           <Upload className="h-3.5 w-3.5" />
