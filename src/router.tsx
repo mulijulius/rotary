@@ -26,16 +26,36 @@ import { hasUnsavedFormInput, onAllFormsClean } from "@/lib/unsaved-form-tracker
 // shown and nothing saved. So: if any form currently has unsaved input,
 // defer the reload and fire it the moment that form is submitted/cleared,
 // instead of blowing it away mid-edit.
+//
+// One more failure mode this guards against: during active development,
+// deployments can land in quick succession (every few minutes). A tab that
+// reloads to pick up build N can immediately find itself stale again
+// seconds later when build N+1 ships. Clearing the "already reloaded" flag
+// the instant `load` fires (the original approach) re-arms the guard
+// right away, so a fast string of deploys can turn into a reload every
+// time the user so much as taps something that triggers a route preload —
+// which is indistinguishable, from the user's seat, from "uploading never
+// works." Debouncing the flag-clear gives each reload a real window to
+// actually get used before the tab is willing to reload again.
 if (typeof window !== "undefined") {
   const key = "rc-athi-river:reloaded-after-stale-chunk";
+  const REARM_DELAY_MS = 20_000;
 
   const doReload = () => {
     sessionStorage.setItem(key, "1");
     window.location.reload();
   };
 
-  window.addEventListener("vite:preloadError", () => {
-    if (sessionStorage.getItem(key)) return;
+  window.addEventListener("vite:preloadError", (event) => {
+    if (sessionStorage.getItem(key)) {
+      // Already reloaded once very recently and it didn't help - reloading
+      // again in a tight loop would just thrash the page instead of
+      // fixing anything. Surface it instead so the person knows to close
+      // and reopen the tab (a fresh tab has no stale HTML to be wrong
+      // about) rather than sitting on a page that quietly never works.
+      console.error("[router] vite:preloadError fired again shortly after a reload — a fresh tab may be needed.", event);
+      return;
+    }
 
     if (hasUnsavedFormInput()) {
       toast.message("An update is available.", {
@@ -53,9 +73,14 @@ if (typeof window !== "undefined") {
   });
 
   // This module itself loaded fine, so the current tab is on a working
-  // build - clear the guard once the page settles so a *later* deploy can
-  // still trigger one automatic reload instead of being silently skipped.
-  window.addEventListener("load", () => sessionStorage.removeItem(key));
+  // build - clear the guard once the page has had a real chance to settle
+  // so a *later* deploy can still trigger one automatic reload instead of
+  // being silently skipped. Delayed rather than immediate (see comment
+  // above) so a burst of back-to-back deploys can't turn into a reload
+  // loop on this tab.
+  window.addEventListener("load", () => {
+    window.setTimeout(() => sessionStorage.removeItem(key), REARM_DELAY_MS);
+  });
 }
 
 export const getRouter = () => {
